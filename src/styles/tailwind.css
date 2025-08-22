@@ -1,0 +1,128 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Core Background Colors */
+    --color-background: #0f0f0f; /* gray-950 - True background for maximum contrast */
+    --color-foreground: #ffffff; /* white - Maximum readability for financial figures */
+    --color-card: #262626; /* gray-800 - Interactive element background */
+    --color-card-foreground: #ffffff; /* white - Card text color */
+    --color-popover: #2d2d2d; /* gray-700 - Surface elevation for modals */
+    --color-popover-foreground: #ffffff; /* white - Popover text color */
+    --color-muted: #1a1a1a; /* gray-900 - Deep background for reduced emphasis */
+    --color-muted-foreground: #888888; /* gray-500 - Secondary text color */
+    
+    /* Interactive Elements */
+    --color-border: rgba(255, 255, 255, 0.1); /* white with opacity - Minimal borders */
+    --color-input: #262626; /* gray-800 - Input field background */
+    --color-ring: #10b981; /* emerald-500 - Focus ring color */
+    
+    /* Brand Colors */
+    --color-primary: #1a1a1a; /* gray-900 - Deep background primary */
+    --color-primary-foreground: #ffffff; /* white - Primary text color */
+    --color-secondary: #2d2d2d; /* gray-700 - Surface elevation secondary */
+    --color-secondary-foreground: #ffffff; /* white - Secondary text color */
+    --color-accent: #10b981; /* emerald-500 - Trust-building green accent */
+    --color-accent-foreground: #ffffff; /* white - Accent text color */
+    
+    /* Status Colors */
+    --color-success: #22c55e; /* green-500 - Achievement and positive outcomes */
+    --color-success-foreground: #ffffff; /* white - Success text color */
+    --color-warning: #f59e0b; /* amber-500 - Budget thresholds and alerts */
+    --color-warning-foreground: #000000; /* black - Warning text color */
+    --color-error: #ef4444; /* red-500 - Problem indication */
+    --color-error-foreground: #ffffff; /* white - Error text color */
+    --color-destructive: #ef4444; /* red-500 - Destructive actions */
+    --color-destructive-foreground: #ffffff; /* white - Destructive text color */
+    
+    /* Surface Variations */
+    --color-surface: #262626; /* gray-800 - Interactive surface background */
+    --color-surface-foreground: #ffffff; /* white - Surface text color */
+  }
+
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Typography Base Styles */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+  }
+  
+  body, p, span, div {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+  }
+  
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+  
+  /* Custom Animation Classes */
+  .animate-slide-in {
+    animation: slideIn 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .animate-shake {
+    animation: shake 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes shake {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-4px);
+    }
+    75% {
+      transform: translateX(4px);
+    }
+  }
+  
+  /* Custom Shadow Classes */
+  .shadow-card {
+    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  
+  .shadow-modal {
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.4);
+  }
+  
+  .shadow-glow {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+  }
+}
