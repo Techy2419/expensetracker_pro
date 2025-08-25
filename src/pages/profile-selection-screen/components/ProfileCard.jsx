@@ -120,12 +120,12 @@ const ProfileCard = ({
           <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-muted-foreground">Share Code</span>
-              <button
-                onClick={handleCopyShareCode}
-                className="text-xs text-accent hover:text-accent/80 transition-colors"
-              >
-                Copy Link
-              </button>
+                          <div
+              onClick={handleCopyShareCode}
+              className="text-xs text-accent hover:text-accent/80 transition-colors cursor-pointer"
+            >
+              Copy Link
+            </div>
             </div>
             <div className="flex items-center space-x-2">
               <code className="text-xs bg-background px-2 py-1 rounded border font-mono text-card-foreground">

@@ -103,12 +103,11 @@ const AuthenticationCard = () => {
   return (
     <div className="w-full max-w-md mx-auto bg-card rounded-2xl shadow-modal p-8 border border-border">
       {/* App Logo */}
-      <div className="flex flex-col items-center mb-8">
-        <div className="w-16 h-16 bg-accent rounded-2xl flex items-center justify-center mb-4">
+      <div className="flex items-center gap-2 mb-6">
+        <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
           <Icon name="DollarSign" size={32} color="white" strokeWidth={2.5} />
         </div>
-        <h1 className="text-2xl font-semibold text-foreground mb-2">ExpenseTracker</h1>
-        <span className="text-sm text-accent font-medium">Pro</span>
+        <h1 className="text-2xl font-semibold text-foreground mb-2">FinTrackr</h1>
       </div>
       {/* Welcome Message */}
       <div className="text-center mb-8">

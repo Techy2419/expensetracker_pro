@@ -81,7 +81,7 @@ export const profileSharingService = {
         if (profileData && userData?.user) {
           const shareLink = `${window.location.origin}/join-profile/${profileData.share_code}`;
           
-          const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+          const { data: emailResult, error: emailError } = await supabase.functions.invoke('test-email-function', {
             body: {
               invitationId: data.id,
               profileId: profileId,

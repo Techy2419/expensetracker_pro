@@ -19,8 +19,8 @@ const AuthenticationScreen = () => {
   return (
     <>
       <Helmet>
-        <title>Sign In - ExpenseTracker Pro</title>
-        <meta name="description" content="Sign in to ExpenseTracker Pro to manage your expenses, track budgets, and achieve your financial goals." />
+        <title>Sign In - FinTrackr</title>
+        <meta name="description" content="Sign in to FinTrackr to manage your expenses, track budgets, and achieve your financial goals." />
         <meta name="keywords" content="expense tracker, budget management, financial planning, sign in, authentication" />
       </Helmet>
 
@@ -57,7 +57,7 @@ const AuthenticationScreen = () => {
       {/* Loading Overlay */}
       <LoadingOverlay 
         isVisible={isInitialLoading} 
-        message="Loading ExpenseTracker Pro..." 
+        message="Loading FinTrackr..." 
       />
     </>
   );

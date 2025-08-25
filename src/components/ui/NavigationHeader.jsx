@@ -60,8 +60,7 @@ const NavigationHeader = ({
               <Icon name="DollarSign" size={20} color="white" strokeWidth={2.5} />
             </div>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-semibold text-foreground">ExpenseTracker</h1>
-              <p className="text-xs text-muted-foreground -mt-1">Pro</p>
+              <h1 className="text-lg font-semibold text-foreground">FinTrackr</h1>
             </div>
           </div>
         </div>
