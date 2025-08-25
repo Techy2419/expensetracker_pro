@@ -130,7 +130,7 @@ serve(async (req) => {
               </ul>
               
               <div style="text-align: center;">
-                <a href="${shareLink}" class="button">Join Profile Now</a>
+                <a href="https://fintrackr.vercel.app/" class="button">Join Profile Now</a>
               </div>
               
               <div class="share-code">
@@ -140,7 +140,7 @@ serve(async (req) => {
               
               <p style="text-align: center; color: #666;">
                 Or copy and paste this link:<br>
-                <a href="${shareLink}" style="color: #667eea;">${shareLink}</a>
+                <a href="https://fintrackr.vercel.app/" style="color: #667eea;">https://fintrackr.vercel.app/</a>
               </p>
               
               <div class="footer">
