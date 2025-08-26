@@ -79,7 +79,7 @@ serve(async (req)=>{
     
     if (isInvitation) {
       // Handle invitation email
-      const { invitedEmail, inviterName, profileName, shareLink, shareCode, role, message } = parsedData;
+      const { invitedEmail, inviterName, profileName, inviteLink, invitationCode, role, message } = parsedData;
       
       if (!invitedEmail) {
         throw new Error('Missing required field: "invitedEmail"');
@@ -132,17 +132,17 @@ serve(async (req)=>{
               </ul>
               
               <div style="text-align: center;">
-                <a href="${shareLink}" class="button">Join Profile Now</a>
+                <a href="${inviteLink}" class="button">Join Profile Now</a>
               </div>
               
               <div class="share-code">
-                <strong>Share Code:</strong><br>
-                <span style="font-size: 24px; color: #667eea;">${shareCode}</span>
+                <strong>Invitation Code:</strong><br>
+                <span style="font-size: 24px; color: #667eea;">${invitationCode}</span>
               </div>
               
               <p style="text-align: center; color: #666;">
                 Or copy and paste this link:<br>
-                <a href="${shareLink}" style="color: #667eea;">${shareLink}</a>
+                <a href="${inviteLink}" style="color: #667eea;">${inviteLink}</a>
               </p>
               
               <div class="footer">

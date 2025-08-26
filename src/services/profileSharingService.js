@@ -44,24 +44,104 @@ export const profileSharingService = {
     }
   },
 
-      // Invite user to profile
-  async inviteUserToProfile(profileId, invitedEmail, role = 'member', permissions = {}, message = '') {
+  // Test database function
+  async testCreateInvitation(profileId, invitedEmail) {
     try {
-      // Use the database function to create invitation with proper code generation
+      console.log('Testing create_profile_invitation function...');
+      console.log('Profile ID:', profileId);
+      console.log('Invited Email:', invitedEmail);
+      
       const { data, error } = await supabase.rpc('create_profile_invitation', {
         profile_id: profileId,
         invited_email: invitedEmail,
-        role,
-        permissions,
-        message
+        role: 'member',
+        permissions: { view: true, edit: false, delete: false, invite: false },
+        message: 'Test invitation'
       });
       
+      console.log('Function result:', { data, error });
+      
       if (error) {
-        return { data: null, error: error.message };
+        console.error('Database function error:', error);
+        return { success: false, error: error.message };
       }
       
       if (!data || !data.success) {
-        return { data: null, error: 'Failed to create invitation' };
+        console.error('Function returned no success:', data);
+        return { success: false, error: 'Function returned no success' };
+      }
+      
+      console.log('✅ Function working! Created invitation:', data);
+      return { success: true, data };
+      
+    } catch (error) {
+      console.error('Exception in test function:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Invite user to profile
+  async inviteUserToProfile(profileId, invitedEmail, role = 'member', permissions = {}, message = '') {
+    try {
+      console.log('Creating invitation for profile:', profileId, 'to email:', invitedEmail);
+      
+      // Try to use the database function first
+      let invitationData;
+      try {
+        const { data, error } = await supabase.rpc('create_profile_invitation', {
+          profile_id: profileId,
+          invited_email: invitedEmail,
+          role,
+          permissions,
+          message
+        });
+        
+        if (error) {
+          console.warn('Database function failed, using fallback:', error);
+          throw error;
+        }
+        
+        if (!data || !data.success) {
+          console.warn('Database function returned no success, using fallback');
+          throw new Error('Function returned no success');
+        }
+        
+        invitationData = data;
+        console.log('✅ Database function worked:', invitationData);
+        
+      } catch (functionError) {
+        console.log('🔄 Using fallback invitation creation...');
+        
+        // Fallback: Generate invitation code manually and insert directly
+        const invitationCode = Math.random().toString(36).substring(2, 8) + 
+                              Math.random().toString(36).substring(2, 8);
+        
+        const { data: insertData, error: insertError } = await supabase
+          .from('profile_invitations')
+          .insert({
+            profile_id: profileId,
+            invited_email: invitedEmail,
+            role,
+            permissions,
+            invitation_code: invitationCode,
+            message,
+            status: 'pending'
+          })
+          .select('id, invitation_code')
+          .single();
+        
+        if (insertError) {
+          console.error('Fallback insertion failed:', insertError);
+          return { data: null, error: `Failed to create invitation: ${insertError.message}` };
+        }
+        
+        invitationData = {
+          success: true,
+          invitation_id: insertData.id,
+          invitation_code: insertData.invitation_code
+        };
+        
+        console.log('✅ Fallback invitation created:', invitationData);
       }
 
       // Now send the email invitation using the Edge Function
@@ -76,16 +156,16 @@ export const profileSharingService = {
         
         if (profileData && userData?.user) {
           // Use the unique invitation code for the link, not the profile share code
-          const inviteLink = `https://fintrackr.vercel.app/join-profile/${data.invitation_code}`;
+          const inviteLink = `https://fintrackr.vercel.app/join-profile/${invitationData.invitation_code}`;
           
           const { data: emailResult, error: emailError } = await supabase.functions.invoke('test-email-function', {
             body: {
-              invitationId: data.invitation_id,
+              invitationId: invitationData.invitation_id,
               profileId: profileId,
               invitedEmail: invitedEmail,
               inviterName: userData.user.user_metadata?.full_name || userData.user.email,
               profileName: profileData.name,
-              invitationCode: data.invitation_code, // Use invitation code instead of share code
+              invitationCode: invitationData.invitation_code, // Use invitation code instead of share code
               inviteLink: inviteLink, // Use invitation link
               role: role,
               message: message
@@ -102,7 +182,7 @@ export const profileSharingService = {
         // Don't fail the whole operation if email fails
       }
       
-      return { data, error: null };
+      return { data: invitationData, error: null };
     } catch (error) {
       return { data: null, error: error.message };
     }
