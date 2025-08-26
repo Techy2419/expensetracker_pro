@@ -1,13 +1,15 @@
 import React from "react";
 import { AuthProvider } from './contexts/AuthContext';
 import Routes from './Routes';
-import { Analytics } from "@vercel/analytics/react";
+import { inject } from "@vercel/analytics";
 
 function App() {
+  // Initialize Vercel Analytics
+  inject();
+  
   return (
     <AuthProvider>
       <Routes />
-      <Analytics />
     </AuthProvider>
   );
 }
