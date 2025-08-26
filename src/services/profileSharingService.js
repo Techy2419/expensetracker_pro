@@ -231,7 +231,7 @@ export const profileSharingService = {
       
       if (isShared) {
         updates.share_settings = shareSettings;
-        // Generate share code if not exists
+        // Generate share code if not exists using database function
         const { data: existingProfile } = await supabase
           .from('expense_profiles')
           .select('share_code')
@@ -239,7 +239,15 @@ export const profileSharingService = {
           .single();
         
         if (!existingProfile?.share_code) {
-          updates.share_code = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+          // Use the database function to generate a unique share code
+          const { data: codeData, error: codeError } = await supabase.rpc('generate_share_code');
+          if (codeError) {
+            console.error('Error generating share code:', codeError);
+            // Fallback to simple generation if database function fails
+            updates.share_code = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+          } else {
+            updates.share_code = codeData;
+          }
         }
       } else {
         updates.share_code = null;

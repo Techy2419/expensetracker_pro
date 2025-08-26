@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { profileSharingService } from '../../services/profileSharingService';
+import { expenseService } from '../../services/expenseService';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -19,12 +20,16 @@ const JoinProfileScreen = () => {
   const [manualCode, setManualCode] = useState(shareCode || '');
 
   useEffect(() => {
+    console.log('JoinProfileScreen useEffect:', { shareCode, user: !!user, authLoading });
+    
     if (!authLoading && !user) {
+      console.log('No user, redirecting to auth');
       navigate('/authentication-screen');
       return;
     }
 
     if (shareCode) {
+      console.log('Loading profile with share code:', shareCode);
       loadProfileByCode(shareCode);
     }
   }, [shareCode, user, authLoading, navigate]);
@@ -36,23 +41,23 @@ const JoinProfileScreen = () => {
     setError('');
     
     try {
-      // Use the new database function to get profile by share code
-      const { data, error } = await supabase.rpc('get_profile_by_share_code', {
-        share_code: code
-      });
+      // Use the expense service to get profile by share code
+      const { data, error } = await expenseService.getProfileByShareCode(code);
       
       if (error) {
+        console.error('Service error:', error);
         setError('Failed to load profile. Please try again.');
         return;
       }
       
-      if (!data || !data.success) {
-        setError(data?.error || 'Invalid share code. Please check the code and try again.');
+      if (!data) {
+        setError('Invalid share code. Please check the code and try again.');
         return;
       }
       
-      setProfile(data.data);
+      setProfile(data);
     } catch (error) {
+      console.error('Error loading profile:', error);
       setError('Failed to load profile. Please try again.');
     } finally {
       setIsLoading(false);
@@ -67,19 +72,41 @@ const JoinProfileScreen = () => {
     setSuccess('');
     
     try {
-      // Use the new database function for joining by share code
-      const { data, error } = await supabase.rpc('join_profile_by_share_code', {
-        share_code: profile.share_code,
-        user_id: user.id
-      });
+      // Check if user already has access to this profile
+      const { data: existingMember, error: checkError } = await supabase
+        .from('profile_members')
+        .select('id')
+        .eq('profile_id', profile.id)
+        .eq('user_id', user.id)
+        .single();
       
-      if (error) {
-        setError('Failed to join profile: ' + error.message);
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking existing membership:', checkError);
+        setError('Failed to check profile access. Please try again.');
         return;
       }
       
-      if (data && !data.success) {
-        setError(data.error || 'Failed to join profile');
+      if (existingMember) {
+        setError('You already have access to this profile.');
+        return;
+      }
+      
+      // Add user as member to the profile
+      const { data, error } = await supabase
+        .from('profile_members')
+        .insert({
+          profile_id: profile.id,
+          user_id: user.id,
+          role: 'member',
+          permissions: { view: true, edit: false, delete: false, invite: false },
+          status: 'active'
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error joining profile:', error);
+        setError('Failed to join profile: ' + error.message);
         return;
       }
       
@@ -91,6 +118,7 @@ const JoinProfileScreen = () => {
       }, 2000);
       
     } catch (error) {
+      console.error('Error joining profile:', error);
       setError('Failed to join profile. Please try again.');
     } finally {
       setIsLoading(false);

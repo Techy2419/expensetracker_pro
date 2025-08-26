@@ -32,6 +32,9 @@ const ProfileSelectionScreen = () => {
     
     setLoading(true);
     try {
+      // Ensure all shared profiles have share codes
+      await expenseService?.ensureShareCodes();
+      
       const { data, error } = await expenseService?.getExpenseProfiles(user?.id);
       
       if (error) {

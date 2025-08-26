@@ -18,6 +18,20 @@ export const expenseService = {
   // Create expense profile
   async createExpenseProfile(profileData) {
     try {
+      // If profile is shared but no share code, generate one
+      if (profileData.is_shared && !profileData.share_code) {
+        try {
+          const { data: codeData, error: codeError } = await supabase.rpc('generate_share_code');
+          if (!codeError && codeData) {
+            profileData.share_code = codeData;
+          }
+        } catch (codeError) {
+          console.warn('Failed to generate share code via RPC, using fallback');
+          // Fallback to simple generation
+          profileData.share_code = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+        }
+      }
+      
       const { data, error } = await supabase?.from('expense_profiles')?.insert([profileData])?.select()?.single();
       
       if (error) {
@@ -32,6 +46,20 @@ export const expenseService = {
   // Update expense profile
   async updateExpenseProfile(profileId, updates) {
     try {
+      // If profile is being shared but no share code, generate one
+      if (updates.is_shared && !updates.share_code) {
+        try {
+          const { data: codeData, error: codeError } = await supabase.rpc('generate_share_code');
+          if (!codeError && codeData) {
+            updates.share_code = codeData;
+          }
+        } catch (codeError) {
+          console.warn('Failed to generate share code via RPC, using fallback');
+          // Fallback to simple generation
+          updates.share_code = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+        }
+      }
+      
       const { data, error } = await supabase?.from('expense_profiles')?.update(updates)?.eq('id', profileId)?.select()?.single();
       
       if (error) {
@@ -54,6 +82,64 @@ export const expenseService = {
       return { error: null };
     } catch (error) {
       return { error: error?.message };
+    }
+  },
+
+  // Ensure all shared profiles have share codes
+  async ensureShareCodes() {
+    try {
+      // Get all shared profiles without share codes
+      const { data: profilesWithoutCodes, error: fetchError } = await supabase
+        .from('expense_profiles')
+        .select('id')
+        .eq('is_shared', true)
+        .is('share_code', null);
+      
+      if (fetchError) {
+        console.error('Error fetching profiles without share codes:', fetchError);
+        return { error: fetchError.message };
+      }
+      
+      if (profilesWithoutCodes && profilesWithoutCodes.length > 0) {
+        // Generate share codes for each profile
+        for (const profile of profilesWithoutCodes) {
+          try {
+            const { data: codeData, error: codeError } = await supabase.rpc('generate_share_code');
+            if (!codeError && codeData) {
+              await supabase
+                .from('expense_profiles')
+                .update({ share_code: codeData })
+                .eq('id', profile.id);
+            }
+          } catch (codeError) {
+            console.error('Error generating share code for profile:', profile.id, codeError);
+          }
+        }
+      }
+      
+      return { error: null };
+    } catch (error) {
+      return { error: error.message };
+    }
+  },
+
+  // Get profile by share code
+  async getProfileByShareCode(shareCode) {
+    try {
+      const { data, error } = await supabase
+        .from('expense_profiles')
+        .select('*')
+        .eq('share_code', shareCode)
+        .eq('is_shared', true)
+        .single();
+      
+      if (error) {
+        return { data: null, error: error.message };
+      }
+      
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error: error.message };
     }
   },
 
