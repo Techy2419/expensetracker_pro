@@ -202,21 +202,51 @@ export const profileSharingService = {
   // Get profile by share code
   async getProfileByShareCode(shareCode) {
     try {
-      const { data, error } = await supabase.rpc('get_profile_by_share_code', {
-        share_code: shareCode
-      });
+      // Use direct query instead of problematic database function
+      const { data: profileData, error: profileError } = await supabase
+        .from('expense_profiles')
+        .select(`
+          id,
+          name,
+          type,
+          is_shared,
+          share_code,
+          created_at,
+          user_id,
+          share_settings
+        `)
+        .eq('share_code', shareCode)
+        .eq('is_shared', true)
+        .single();
       
-      if (error) {
-        return { data: null, error: error.message };
+      if (profileError) {
+        return { data: null, error: 'Invalid share code. Please check the code and try again.' };
       }
       
-      if (!data || !data.success) {
-        return { data: null, error: data?.error || 'Invalid share code' };
+      if (!profileData) {
+        return { data: null, error: 'Invalid share code. Please check the code and try again.' };
       }
       
-      return { data: data.data, error: null };
+      // Get user profile information
+      const { data: userData, error: userError } = await supabase
+        .from('user_profiles')
+        .select('id, full_name, email')
+        .eq('id', profileData.user_id)
+        .single();
+      
+      // Combine profile and user data
+      const combinedData = {
+        ...profileData,
+        user_profiles: userData || { 
+          id: profileData.user_id, 
+          full_name: 'Unknown User', 
+          email: 'unknown@email.com' 
+        }
+      };
+      
+      return { data: combinedData, error: null };
     } catch (error) {
-      return { data: null, error: error.message };
+      return { data: null, error: 'Failed to load profile. Please try again.' };
     }
   },
 
