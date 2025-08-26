@@ -518,5 +518,65 @@ export const profileSharingService = {
     } catch (error) {
       return { hasAccess: false, role: null, permissions: null, error: error.message };
     }
+  },
+
+  // Ensure user profile exists before joining
+  async ensureUserProfileExists(userId) {
+    try {
+      console.log('🔍 Ensuring user profile exists for:', userId);
+      
+      // Check if user profile exists
+      const { data: userProfile, error: checkError } = await supabase
+        .from('user_profiles')
+        .select('id, email, full_name')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (checkError) {
+        console.error('❌ Error checking user profile:', checkError);
+        return { success: false, error: checkError.message };
+      }
+      
+      if (userProfile) {
+        console.log('✅ User profile already exists:', userProfile);
+        return { success: true, data: userProfile };
+      }
+      
+      // Get user data from auth
+      const { data: authUser } = await supabase.auth.getUser();
+      if (!authUser?.user) {
+        return { success: false, error: 'User not authenticated' };
+      }
+      
+      const userEmail = authUser.user.email || 'user@example.com';
+      const userName = authUser.user.user_metadata?.full_name || 'User';
+      
+      console.log('➕ Creating user profile for:', { userId, userEmail, userName });
+      
+      // Create user profile
+      const { data: newProfile, error: createError } = await supabase
+        .from('user_profiles')
+        .insert({
+          id: userId,
+          email: userEmail,
+          full_name: userName,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+      
+      if (createError) {
+        console.error('❌ Failed to create user profile:', createError);
+        return { success: false, error: createError.message };
+      }
+      
+      console.log('✅ User profile created successfully:', newProfile);
+      return { success: true, data: newProfile };
+      
+    } catch (error) {
+      console.error('💥 Exception in ensureUserProfileExists:', error);
+      return { success: false, error: error.message };
+    }
   }
 };

@@ -77,58 +77,86 @@ const JoinProfileScreen = () => {
     setSuccess('');
     
     try {
-      // Check if user already has access to this profile
+      console.log('🚀 Starting profile join process...');
+      console.log('User ID:', user.id);
+      console.log('Profile ID:', profile.id);
+      
+      // Step 1: Ensure user profile exists in user_profiles table
+      console.log('🔍 Ensuring user profile exists...');
+      const userProfileResult = await profileSharingService.ensureUserProfileExists(user.id);
+      
+      if (!userProfileResult.success) {
+        console.error('❌ Failed to ensure user profile:', userProfileResult.error);
+        setError('Failed to verify user account. Please try again.');
+        return;
+      }
+      
+      console.log('✅ User profile ensured:', userProfileResult.data);
+      
+      // Step 2: Check if user already has access to this profile
+      console.log('🔍 Checking existing membership...');
       const { data: existingMember, error: checkError } = await supabase
         .from('profile_members')
         .select('id')
         .eq('profile_id', profile.id)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking existing membership:', checkError);
+      if (checkError) {
+        console.error('❌ Error checking existing membership:', checkError);
         setError('Failed to check profile access. Please try again.');
         return;
       }
       
       if (existingMember) {
+        console.log('⚠️ User already has access to this profile');
         setError('You already have access to this profile.');
         return;
       }
       
-      // If this is an invitation-based join, update the invitation status
+      // Step 3: Update invitation status if invitation-based
       if (profile.invitation) {
+        console.log('📧 Updating invitation status...');
         const { error: updateError } = await supabase
           .from('profile_invitations')
           .update({ status: 'accepted' })
           .eq('id', profile.invitation.id);
         
         if (updateError) {
-          console.warn('Failed to update invitation status:', updateError);
+          console.warn('⚠️ Failed to update invitation status:', updateError);
           // Don't fail the join operation if this fails
+        } else {
+          console.log('✅ Invitation status updated to accepted');
         }
       }
       
-      // Add user as member to the profile
-      const { data, error } = await supabase
+      // Step 4: Add user as member to the profile
+      console.log('➕ Adding user as profile member...');
+      const memberData = {
+        profile_id: profile.id,
+        user_id: user.id,
+        role: profile.invitation?.role || 'member',
+        permissions: profile.invitation?.permissions || { view: true, edit: false, delete: false, invite: false },
+        status: 'active',
+        invited_by: profile.invitation?.invited_by || null,
+        joined_at: new Date().toISOString()
+      };
+      
+      console.log('Member data to insert:', memberData);
+      
+      const { data: newMember, error: insertError } = await supabase
         .from('profile_members')
-        .insert({
-          profile_id: profile.id,
-          user_id: user.id,
-          role: profile.invitation?.role || 'member',
-          permissions: profile.invitation?.permissions || { view: true, edit: false, delete: false, invite: false },
-          status: 'active',
-          invited_by: profile.invitation?.invited_by || null
-        })
+        .insert(memberData)
         .select()
         .single();
       
-      if (error) {
-        console.error('Error joining profile:', error);
-        setError('Failed to join profile: ' + error.message);
+      if (insertError) {
+        console.error('❌ Error joining profile:', insertError);
+        setError('Failed to join profile: ' + insertError.message);
         return;
       }
       
+      console.log('✅ Successfully joined profile:', newMember);
       setSuccess('Successfully joined the profile! Redirecting to dashboard...');
       
       // Redirect to dashboard after a short delay
@@ -137,7 +165,7 @@ const JoinProfileScreen = () => {
       }, 2000);
       
     } catch (error) {
-      console.error('Error joining profile:', error);
+      console.error('💥 Error joining profile:', error);
       setError('Failed to join profile. Please try again.');
     } finally {
       setIsLoading(false);
