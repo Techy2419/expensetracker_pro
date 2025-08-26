@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { profileSharingService } from '../../services/profileSharingService';
-import { expenseService } from '../../services/expenseService';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -41,8 +40,8 @@ const JoinProfileScreen = () => {
     setError('');
     
     try {
-      // Use the expense service to get profile by share code
-      const { data, error } = await expenseService.getProfileByShareCode(code);
+      // Use the profile sharing service to get profile by share code
+      const { data, error } = await profileSharingService.getProfileByShareCode(code);
       
       if (error) {
         console.error('Service error:', error);
