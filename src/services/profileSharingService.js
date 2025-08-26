@@ -44,7 +44,7 @@ export const profileSharingService = {
     }
   },
 
-    // Invite user to profile
+      // Invite user to profile
   async inviteUserToProfile(profileId, invitedEmail, role = 'member', permissions = {}, message = '') {
     try {
       // Use the database function to create invitation with proper code generation
@@ -64,32 +64,33 @@ export const profileSharingService = {
         return { data: null, error: 'Failed to create invitation' };
       }
 
-             // Now send the email invitation using the Edge Function
-       try {
-         const { data: profileData } = await supabase
-           .from('expense_profiles')
-           .select('name, share_code')
-           .eq('id', profileId)
-           .single();
+      // Now send the email invitation using the Edge Function
+      try {
+        const { data: profileData } = await supabase
+          .from('expense_profiles')
+          .select('name')
+          .eq('id', profileId)
+          .single();
 
-         const { data: userData } = await supabase.auth.getUser();
-         
-         if (profileData && userData?.user) {
-                       const shareLink = `https://fintrackr.vercel.app/join-profile/${profileData.share_code}`;
-           
-                                               const { data: emailResult, error: emailError } = await supabase.functions.invoke('test-email-function', {
-             body: {
-               invitationId: data.invitation_id,
-               profileId: profileId,
-               invitedEmail: invitedEmail,
-               inviterName: userData.user.user_metadata?.full_name || userData.user.email,
-               profileName: profileData.name,
-               shareCode: profileData.share_code,
-               shareLink: shareLink,
-               role: role,
-               message: message
-             }
-           });
+        const { data: userData } = await supabase.auth.getUser();
+        
+        if (profileData && userData?.user) {
+          // Use the unique invitation code for the link, not the profile share code
+          const inviteLink = `https://fintrackr.vercel.app/join-profile/${data.invitation_code}`;
+          
+          const { data: emailResult, error: emailError } = await supabase.functions.invoke('test-email-function', {
+            body: {
+              invitationId: data.invitation_id,
+              profileId: profileId,
+              invitedEmail: invitedEmail,
+              inviterName: userData.user.user_metadata?.full_name || userData.user.email,
+              profileName: profileData.name,
+              invitationCode: data.invitation_code, // Use invitation code instead of share code
+              inviteLink: inviteLink, // Use invitation link
+              role: role,
+              message: message
+            }
+          });
 
           if (emailError) {
             console.warn('Email sending failed, but invitation was stored:', emailError);
@@ -199,10 +200,86 @@ export const profileSharingService = {
     }
   },
 
-  // Get profile by share code
-  async getProfileByShareCode(shareCode) {
+  // Get profile by invitation code or share code
+  async getProfileByCode(code) {
     try {
-      // Use direct query instead of problematic database function
+      console.log('getProfileByCode called with:', code);
+      
+      // First, try to find an invitation with this code
+      const { data: invitation, error: invitationError } = await supabase
+        .from('profile_invitations')
+        .select(`
+          id,
+          profile_id,
+          invited_email,
+          role,
+          permissions,
+          status,
+          created_at
+        `)
+        .eq('invitation_code', code)
+        .eq('status', 'pending')
+        .single();
+      
+      console.log('Invitation query result:', { invitation, invitationError });
+      
+      if (invitation && !invitationError) {
+        // Found an invitation, now get the profile details
+        const { data: profileData, error: profileError } = await supabase
+          .from('expense_profiles')
+          .select(`
+            id,
+            name,
+            type,
+            is_shared,
+            share_code,
+            created_at,
+            user_id,
+            share_settings
+          `)
+          .eq('id', invitation.profile_id)
+          .eq('is_shared', true)
+          .single();
+        
+        console.log('Profile query result:', { profileData, profileError });
+        
+        if (profileError) {
+          console.error('Profile query error:', profileError);
+          return { data: null, error: `Profile query failed: ${profileError.message}` };
+        }
+        
+        if (!profileData) {
+          console.error('No profile data found for invitation');
+          return { data: null, error: 'Invalid invitation code. Please check the code and try again.' };
+        }
+        
+        // Get user profile information
+        const { data: userData, error: userError } = await supabase
+          .from('user_profiles')
+          .select('id, full_name, email')
+          .eq('id', profileData.user_id)
+          .single();
+        
+        console.log('User profile query result:', { userData, userError });
+        
+        // Combine profile, user, and invitation data
+        const combinedData = {
+          ...profileData,
+          user_profiles: userData || { 
+            id: profileData.user_id, 
+            full_name: 'Unknown User', 
+            email: 'unknown@email.com' 
+          },
+          invitation: invitation
+        };
+        
+        console.log('Combined data with invitation:', combinedData);
+        return { data: combinedData, error: null };
+      }
+      
+      // If no invitation found, try to find by profile share code (for backward compatibility)
+      console.log('No invitation found, trying profile share code...');
+      
       const { data: profileData, error: profileError } = await supabase
         .from('expense_profiles')
         .select(`
@@ -215,16 +292,20 @@ export const profileSharingService = {
           user_id,
           share_settings
         `)
-        .eq('share_code', shareCode)
+        .eq('share_code', code)
         .eq('is_shared', true)
         .single();
       
+      console.log('Profile share code query result:', { profileData, profileError });
+      
       if (profileError) {
-        return { data: null, error: 'Invalid share code. Please check the code and try again.' };
+        console.error('Profile share code query error:', profileError);
+        return { data: null, error: `Profile query failed: ${profileError.message}` };
       }
       
       if (!profileData) {
-        return { data: null, error: 'Invalid share code. Please check the code and try again.' };
+        console.error('No profile data found for code:', code);
+        return { data: null, error: 'Invalid code. Please check the code and try again.' };
       }
       
       // Get user profile information
@@ -233,6 +314,8 @@ export const profileSharingService = {
         .select('id, full_name, email')
         .eq('id', profileData.user_id)
         .single();
+      
+      console.log('User profile query result:', { userData, userError });
       
       // Combine profile and user data
       const combinedData = {
@@ -244,9 +327,11 @@ export const profileSharingService = {
         }
       };
       
+      console.log('Combined data from share code:', combinedData);
       return { data: combinedData, error: null };
     } catch (error) {
-      return { data: null, error: 'Failed to load profile. Please try again.' };
+      console.error('Exception in getProfileByCode:', error);
+      return { data: null, error: `Service exception: ${error.message}` };
     }
   },
 

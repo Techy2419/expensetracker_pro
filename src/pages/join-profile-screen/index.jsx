@@ -40,24 +40,30 @@ const JoinProfileScreen = () => {
     setError('');
     
     try {
-      // Use the profile sharing service to get profile by share code
-      const { data, error } = await profileSharingService.getProfileByShareCode(code);
+      console.log('Attempting to load profile with code:', code);
+      
+      // Use the profile sharing service to get profile by invitation code or share code
+      const { data, error } = await profileSharingService.getProfileByCode(code);
+      
+      console.log('Service response:', { data, error });
       
       if (error) {
         console.error('Service error:', error);
-        setError('Failed to load profile. Please try again.');
+        setError(`Failed to load profile: ${error}`);
         return;
       }
       
       if (!data) {
+        console.error('No data returned from service');
         setError('Invalid share code. Please check the code and try again.');
         return;
       }
       
+      console.log('Profile loaded successfully:', data);
       setProfile(data);
     } catch (error) {
-      console.error('Error loading profile:', error);
-      setError('Failed to load profile. Please try again.');
+      console.error('Exception in loadProfileByCode:', error);
+      setError(`Failed to load profile: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -90,15 +96,29 @@ const JoinProfileScreen = () => {
         return;
       }
       
+      // If this is an invitation-based join, update the invitation status
+      if (profile.invitation) {
+        const { error: updateError } = await supabase
+          .from('profile_invitations')
+          .update({ status: 'accepted' })
+          .eq('id', profile.invitation.id);
+        
+        if (updateError) {
+          console.warn('Failed to update invitation status:', updateError);
+          // Don't fail the join operation if this fails
+        }
+      }
+      
       // Add user as member to the profile
       const { data, error } = await supabase
         .from('profile_members')
         .insert({
           profile_id: profile.id,
           user_id: user.id,
-          role: 'member',
-          permissions: { view: true, edit: false, delete: false, invite: false },
-          status: 'active'
+          role: profile.invitation?.role || 'member',
+          permissions: profile.invitation?.permissions || { view: true, edit: false, delete: false, invite: false },
+          status: 'active',
+          invited_by: profile.invitation?.invited_by || null
         })
         .select()
         .single();
