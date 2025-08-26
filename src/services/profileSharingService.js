@@ -44,56 +44,52 @@ export const profileSharingService = {
     }
   },
 
-  // Invite user to profile
+    // Invite user to profile
   async inviteUserToProfile(profileId, invitedEmail, role = 'member', permissions = {}, message = '') {
     try {
-      // Generate invitation code
-      const invitationCode = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      
-      const { data, error } = await supabase
-        .from('profile_invitations')
-        .insert([{
-          profile_id: profileId,
-          invited_email: invitedEmail,
-          role,
-          permissions,
-          invitation_code: invitationCode,
-          message,
-          expires_at: null // Set to null since column still exists
-        }])
-        .select()
-        .single();
+      // Use the database function to create invitation with proper code generation
+      const { data, error } = await supabase.rpc('create_profile_invitation', {
+        profile_id: profileId,
+        invited_email: invitedEmail,
+        role,
+        permissions,
+        message
+      });
       
       if (error) {
         return { data: null, error: error.message };
       }
+      
+      if (!data || !data.success) {
+        return { data: null, error: 'Failed to create invitation' };
+      }
 
-      // Now send the email invitation using the Edge Function
-      try {
-        const { data: profileData } = await supabase
-          .from('expense_profiles')
-          .select('name, share_code')
-          .eq('id', profileId)
-          .single();
+             // Now send the email invitation using the Edge Function
+       try {
+         const { data: profileData } = await supabase
+           .from('expense_profiles')
+           .select('name, share_code')
+           .eq('id', profileId)
+           .single();
 
-        const { data: userData } = await supabase.auth.getUser();
-        
-        if (profileData && userData?.user) {
-          const shareLink = `${window.location.origin}/join-profile/${profileData.share_code}`;
-          
-          const { data: emailResult, error: emailError } = await supabase.functions.invoke('test-email-function', {
-            body: {
-              invitationId: data.id,
-              profileId: profileId,
-              invitedEmail: invitedEmail,
-              inviterName: userData.user.user_metadata?.full_name || userData.user.email,
-              profileName: profileData.name,
-              shareCode: profileData.share_code,
-              shareLink: shareLink,
-              role: role,
-              message: message
-            }
-          });
+         const { data: userData } = await supabase.auth.getUser();
+         
+         if (profileData && userData?.user) {
+           const shareLink = `${window.location.origin}/join-profile/${profileData.share_code}`;
+           
+           const { data: emailResult, error: emailError } = await supabase.functions.invoke('test-email-function', {
+             body: {
+               invitationId: data.invitation_id,
+               profileId: profileId,
+               invitedEmail: invitedEmail,
+               inviterName: userData.user.user_metadata?.full_name || userData.user.email,
+               profileName: profileData.name,
+               shareCode: profileData.share_code,
+               shareLink: shareLink,
+               role: role,
+               message: message
+             }
+           });
 
           if (emailError) {
             console.warn('Email sending failed, but invitation was stored:', emailError);
