@@ -37,14 +37,14 @@ SECURITY DEFINER
 AS $$
 DECLARE
     invitation_id UUID;
-    invitation_code TEXT;
+    new_invitation_code TEXT;
 BEGIN
     -- Generate unique invitation code
     LOOP
-        invitation_code := upper(substring(md5(random()::text) from 1 for 12));
+        new_invitation_code := upper(substring(md5(random()::text) from 1 for 12));
         
         -- Check if code already exists
-        IF NOT EXISTS(SELECT 1 FROM public.profile_invitations WHERE invitation_code = invitation_code) THEN
+        IF NOT EXISTS(SELECT 1 FROM public.profile_invitations WHERE invitation_code = new_invitation_code) THEN
             EXIT;
         END IF;
     END LOOP;
@@ -63,7 +63,7 @@ BEGIN
         invited_email,
         role,
         permissions,
-        invitation_code,
+        new_invitation_code,
         message,
         'pending'
     ) RETURNING id INTO invitation_id;
@@ -71,7 +71,7 @@ BEGIN
     RETURN jsonb_build_object(
         'success', true,
         'invitation_id', invitation_id,
-        'invitation_code', invitation_code
+        'invitation_code', new_invitation_code
     );
 END;
 $$;
