@@ -6,6 +6,7 @@
 2. **"Invalid or expired share link" errors** - Fixed validation logic
 3. **Missing ENUM values** - Added all required database ENUMs
 4. **Broken join functionality** - Implemented proper profile joining
+5. **Database schema mismatch** - Code now works with current database state
 
 ## **✅ Changes Made:**
 
@@ -20,6 +21,7 @@
 - Removed expiration logic from invitation creation
 - Updated to use new database functions
 - Uses the working 'test-email-function' Edge Function
+- **IMPORTANT:** Set `expires_at: null` to work with current database schema
 
 ### **3. Updated Email Template**
 - Removed "expires in 7 days" text
@@ -37,13 +39,17 @@
 
 ## **🚀 How to Apply:**
 
-### **Step 1: Run Database Migration**
+### **Step 1: Quick Fix (Immediate)**
+The code has been updated to work with your current database schema. You can test invites now!
+
+### **Step 2: Run Database Migration (Recommended)**
 ```bash
 # In your Supabase dashboard or CLI
 supabase db push
 ```
+This will remove the `expires_at` column and make invites truly never expire.
 
-### **Step 2: Verify Edge Function**
+### **Step 3: Verify Edge Function**
 ```bash
 # Ensure test-email-function is working (already deployed)
 supabase functions list

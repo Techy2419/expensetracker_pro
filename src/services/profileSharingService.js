@@ -58,8 +58,8 @@ export const profileSharingService = {
           role,
           permissions,
           invitation_code: invitationCode,
-          message
-          // No expiration - invites never expire
+          message,
+          expires_at: null // Set to null since column still exists
         }])
         .select()
         .single();
