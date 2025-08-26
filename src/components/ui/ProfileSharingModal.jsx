@@ -421,7 +421,7 @@ Note: If the email doesn't arrive, check the spam folder or share the profile us
                             
                             <div className="text-right">
                               <p className="text-xs text-muted-foreground">
-                                Expires: {new Date(invitation.expires_at).toLocaleDateString()}
+                                Never expires
                               </p>
                               {invitation.status === 'pending' && (
                                 <Button

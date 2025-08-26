@@ -36,14 +36,22 @@ const JoinProfileScreen = () => {
     setError('');
     
     try {
-      const result = await profileSharingService.getProfileByShareCode(code);
+      // Use the new database function to get profile by share code
+      const { data, error } = await supabase.rpc('get_profile_by_share_code', {
+        share_code: code
+      });
       
-      if (result.error) {
-        setError('Invalid or expired share link. Please check the link and try again.');
+      if (error) {
+        setError('Failed to load profile. Please try again.');
         return;
       }
       
-      setProfile(result.data);
+      if (!data || !data.success) {
+        setError(data?.error || 'Invalid share code. Please check the code and try again.');
+        return;
+      }
+      
+      setProfile(data.data);
     } catch (error) {
       setError('Failed to load profile. Please try again.');
     } finally {

@@ -58,8 +58,8 @@ export const profileSharingService = {
           role,
           permissions,
           invitation_code: invitationCode,
-          message,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+          message
+          // No expiration - invites never expire
         }])
         .select()
         .single();
@@ -206,20 +206,19 @@ export const profileSharingService = {
   // Get profile by share code
   async getProfileByShareCode(shareCode) {
     try {
-      const { data, error } = await supabase
-        .from('expense_profiles')
-        .select(`
-          *,
-          user_profiles(id, email, full_name)
-        `)
-        .eq('share_code', shareCode)
-        .eq('is_shared', true)
-        .single();
+      const { data, error } = await supabase.rpc('get_profile_by_share_code', {
+        share_code: shareCode
+      });
       
       if (error) {
         return { data: null, error: error.message };
       }
-      return { data, error: null };
+      
+      if (!data || !data.success) {
+        return { data: null, error: data?.error || 'Invalid share code' };
+      }
+      
+      return { data: data.data, error: null };
     } catch (error) {
       return { data: null, error: error.message };
     }

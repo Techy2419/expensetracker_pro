@@ -130,7 +130,7 @@ serve(async (req) => {
               </ul>
               
               <div style="text-align: center;">
-                <a href="https://fintrackr.vercel.app/" class="button">Join Profile Now</a>
+                <a href="${shareLink}" class="button">Join Profile Now</a>
               </div>
               
               <div class="share-code">
@@ -140,11 +140,11 @@ serve(async (req) => {
               
               <p style="text-align: center; color: #666;">
                 Or copy and paste this link:<br>
-                <a href="https://fintrackr.vercel.app/" style="color: #667eea;">https://fintrackr.vercel.app/</a>
+                <a href="${shareLink}" style="color: #667eea;">${shareLink}</a>
               </p>
               
               <div class="footer">
-                <p>This invitation expires in 7 days.</p>
+                <p>This invitation never expires.</p>
                 <p>FinTrackr - Your Smart Financial Companion</p>
               </div>
             </div>
