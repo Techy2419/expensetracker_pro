@@ -44,38 +44,60 @@ export const profileSharingService = {
     }
   },
 
-  // Test database function
-  async testCreateInvitation(profileId, invitedEmail) {
+  // Test database access and function
+  async testDatabaseAccess() {
     try {
-      console.log('Testing create_profile_invitation function...');
-      console.log('Profile ID:', profileId);
-      console.log('Invited Email:', invitedEmail);
+      console.log('🧪 Testing database access...');
       
-      const { data, error } = await supabase.rpc('create_profile_invitation', {
-        profile_id: profileId,
-        invited_email: invitedEmail,
+      // Test 1: Check if we can read from profile_invitations
+      console.log('📧 Testing profile_invitations table access...');
+      const { data: invitations, error: invError } = await supabase
+        .from('profile_invitations')
+        .select('count')
+        .limit(1);
+      
+      console.log('Invitations test result:', { invitations, invError });
+      
+      // Test 2: Check if we can read from expense_profiles
+      console.log('📊 Testing expense_profiles table access...');
+      const { data: profiles, error: profError } = await supabase
+        .from('expense_profiles')
+        .select('count')
+        .limit(1);
+      
+      console.log('Profiles test result:', { profiles, profError });
+      
+      // Test 3: Check if we can read from user_profiles
+      console.log('👤 Testing user_profiles table access...');
+      const { data: users, error: userError } = await supabase
+        .from('user_profiles')
+        .select('count')
+        .limit(1);
+      
+      console.log('Users test result:', { users, userError });
+      
+      // Test 4: Try the database function
+      console.log('🔧 Testing create_profile_invitation function...');
+      const { data: funcData, error: funcError } = await supabase.rpc('create_profile_invitation', {
+        profile_id: '00000000-0000-0000-0000-000000000000', // Dummy ID for testing
+        invited_email: 'test@example.com',
         role: 'member',
         permissions: { view: true, edit: false, delete: false, invite: false },
         message: 'Test invitation'
       });
       
-      console.log('Function result:', { data, error });
+      console.log('Function test result:', { funcData, funcError });
       
-      if (error) {
-        console.error('Database function error:', error);
-        return { success: false, error: error.message };
-      }
-      
-      if (!data || !data.success) {
-        console.error('Function returned no success:', data);
-        return { success: false, error: 'Function returned no success' };
-      }
-      
-      console.log('✅ Function working! Created invitation:', data);
-      return { success: true, data };
+      return {
+        success: true,
+        invitations: { data: invitations, error: invError },
+        profiles: { data: profiles, error: profError },
+        users: { data: users, error: userError },
+        function: { data: funcData, error: funcError }
+      };
       
     } catch (error) {
-      console.error('Exception in test function:', error);
+      console.error('💥 Database access test failed:', error);
       return { success: false, error: error.message };
     }
   },
@@ -112,9 +134,11 @@ export const profileSharingService = {
       } catch (functionError) {
         console.log('🔄 Using fallback invitation creation...');
         
-        // Fallback: Generate invitation code manually and insert directly
-        const invitationCode = Math.random().toString(36).substring(2, 8) + 
-                              Math.random().toString(36).substring(2, 8);
+                 // Fallback: Generate invitation code manually and insert directly
+         // Ensure exactly 12 characters for consistency
+         const part1 = Math.random().toString(36).substring(2, 8);
+         const part2 = Math.random().toString(36).substring(2, 8);
+         const invitationCode = (part1 + part2).toUpperCase();
         
         const { data: insertData, error: insertError } = await supabase
           .from('profile_invitations')
@@ -280,138 +304,112 @@ export const profileSharingService = {
     }
   },
 
-  // Get profile by invitation code or share code
+  // Get profile by invitation code or share code - SIMPLIFIED VERSION
   async getProfileByCode(code) {
     try {
-      console.log('getProfileByCode called with:', code);
+      console.log('🔍 getProfileByCode called with:', code);
       
-      // First, try to find an invitation with this code
+      if (!code || code.length !== 12) {
+        return { data: null, error: 'Invalid code format. Code must be 12 characters.' };
+      }
+      
+      // Try to find an invitation first (most common case)
+      console.log('🔍 Looking for invitation with code:', code);
       const { data: invitation, error: invitationError } = await supabase
         .from('profile_invitations')
-        .select(`
-          id,
-          profile_id,
-          invited_email,
-          role,
-          permissions,
-          status,
-          created_at
-        `)
+        .select('*')
         .eq('invitation_code', code)
         .eq('status', 'pending')
-        .single();
+        .maybeSingle(); // Use maybeSingle to avoid errors if no results
       
-      console.log('Invitation query result:', { invitation, invitationError });
+      console.log('📧 Invitation lookup result:', { invitation, invitationError });
       
       if (invitation && !invitationError) {
-        // Found an invitation, now get the profile details
-        const { data: profileData, error: profileError } = await supabase
-          .from('expense_profiles')
-          .select(`
-            id,
-            name,
-            type,
-            is_shared,
-            share_code,
-            created_at,
-            user_id,
-            share_settings
-          `)
-          .eq('id', invitation.profile_id)
-          .eq('is_shared', true)
-          .single();
+        console.log('✅ Found invitation, getting profile details...');
         
-        console.log('Profile query result:', { profileData, profileError });
+        // Get profile details using invitation.profile_id
+        const { data: profile, error: profileError } = await supabase
+          .from('expense_profiles')
+          .select('*')
+          .eq('id', invitation.profile_id)
+          .maybeSingle();
         
         if (profileError) {
-          console.error('Profile query error:', profileError);
-          return { data: null, error: `Profile query failed: ${profileError.message}` };
+          console.error('❌ Profile lookup error:', profileError);
+          return { data: null, error: 'Failed to load profile details' };
         }
         
-        if (!profileData) {
-          console.error('No profile data found for invitation');
-          return { data: null, error: 'Invalid invitation code. Please check the code and try again.' };
+        if (!profile) {
+          console.error('❌ No profile found for invitation');
+          return { data: null, error: 'Profile not found' };
         }
         
-        // Get user profile information
-        const { data: userData, error: userError } = await supabase
+        // Get user info
+        const { data: user, error: userError } = await supabase
           .from('user_profiles')
           .select('id, full_name, email')
-          .eq('id', profileData.user_id)
-          .single();
+          .eq('id', profile.user_id)
+          .maybeSingle();
         
-        console.log('User profile query result:', { userData, userError });
+        console.log('👤 User lookup result:', { user, userError });
         
-        // Combine profile, user, and invitation data
-        const combinedData = {
-          ...profileData,
-          user_profiles: userData || { 
-            id: profileData.user_id, 
-            full_name: 'Unknown User', 
-            email: 'unknown@email.com' 
+        // Return combined data
+        const result = {
+          ...profile,
+          user_profiles: user || { 
+            id: profile.user_id, 
+            full_name: 'Profile Owner', 
+            email: 'owner@example.com' 
           },
           invitation: invitation
         };
         
-        console.log('Combined data with invitation:', combinedData);
-        return { data: combinedData, error: null };
+        console.log('✅ Successfully loaded profile with invitation:', result);
+        return { data: result, error: null };
       }
       
-      // If no invitation found, try to find by profile share code (for backward compatibility)
-      console.log('No invitation found, trying profile share code...');
+      // If no invitation found, try profile share code
+      console.log('🔄 No invitation found, trying profile share code...');
       
-      const { data: profileData, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('expense_profiles')
-        .select(`
-          id,
-          name,
-          type,
-          is_shared,
-          share_code,
-          created_at,
-          user_id,
-          share_settings
-        `)
+        .select('*')
         .eq('share_code', code)
         .eq('is_shared', true)
-        .single();
-      
-      console.log('Profile share code query result:', { profileData, profileError });
+        .maybeSingle();
       
       if (profileError) {
-        console.error('Profile share code query error:', profileError);
-        return { data: null, error: `Profile query failed: ${profileError.message}` };
+        console.error('❌ Profile share code lookup error:', profileError);
+        return { data: null, error: 'Failed to load profile' };
       }
       
-      if (!profileData) {
-        console.error('No profile data found for code:', code);
-        return { data: null, error: 'Invalid code. Please check the code and try again.' };
+      if (!profile) {
+        console.error('❌ No profile found with share code:', code);
+        return { data: null, error: 'Invalid code. Please check and try again.' };
       }
       
-      // Get user profile information
-      const { data: userData, error: userError } = await supabase
+      // Get user info
+      const { data: user, error: userError } = await supabase
         .from('user_profiles')
         .select('id, full_name, email')
-        .eq('id', profileData.user_id)
-        .single();
+        .eq('id', profile.user_id)
+        .maybeSingle();
       
-      console.log('User profile query result:', { userData, userError });
-      
-      // Combine profile and user data
-      const combinedData = {
-        ...profileData,
-        user_profiles: userData || { 
-          id: profileData.user_id, 
-          full_name: 'Unknown User', 
-          email: 'unknown@email.com' 
+      const result = {
+        ...profile,
+        user_profiles: user || { 
+          id: profile.user_id, 
+          full_name: 'Profile Owner', 
+          email: 'owner@example.com' 
         }
       };
       
-      console.log('Combined data from share code:', combinedData);
-      return { data: combinedData, error: null };
+      console.log('✅ Successfully loaded profile with share code:', result);
+      return { data: result, error: null };
+      
     } catch (error) {
-      console.error('Exception in getProfileByCode:', error);
-      return { data: null, error: `Service exception: ${error.message}` };
+      console.error('💥 Exception in getProfileByCode:', error);
+      return { data: null, error: 'Service error. Please try again.' };
     }
   },
 

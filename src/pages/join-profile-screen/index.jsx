@@ -153,6 +153,23 @@ const JoinProfileScreen = () => {
     loadProfileByCode(manualCode.trim());
   };
 
+  const testDatabaseAccess = async () => {
+    try {
+      console.log('🧪 Testing database access...');
+      const result = await profileSharingService.testDatabaseAccess();
+      console.log('Database test result:', result);
+      
+      if (result.success) {
+        setSuccess('Database access test completed. Check console for details.');
+      } else {
+        setError('Database access test failed: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Test failed:', error);
+      setError('Test failed: ' + error.message);
+    }
+  };
+
   const getProfileTypeIcon = (type) => {
     switch (type) {
       case 'personal': return 'User';
@@ -239,18 +256,30 @@ const JoinProfileScreen = () => {
                   label="Share Code"
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
-                  placeholder="Enter the 8-character share code"
-                  maxLength={8}
+                  placeholder="Enter the 12-character invitation code"
+                  maxLength={12}
                 />
-                <Button
-                  onClick={handleManualJoin}
-                  disabled={!manualCode.trim()}
-                  iconName="Search"
-                  iconPosition="left"
-                  className="w-full"
-                >
-                  Find Profile
-                </Button>
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={handleManualJoin}
+                    disabled={!manualCode.trim()}
+                    iconName="Search"
+                    iconPosition="left"
+                    className="flex-1"
+                  >
+                    Find Profile
+                  </Button>
+                  <Button
+                    onClick={testDatabaseAccess}
+                    variant="outline"
+                    iconName="Settings"
+                    iconPosition="left"
+                    className="px-4"
+                    title="Test database access"
+                  >
+                    Test DB
+                  </Button>
+                </div>
               </div>
             </div>
           )}
