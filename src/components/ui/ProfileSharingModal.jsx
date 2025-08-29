@@ -3,6 +3,7 @@ import Icon from '../AppIcon';
 import Button from './Button';
 import Input from './Input';
 import { profileSharingService } from '../../services/profileSharingService';
+import { useToast } from '../../contexts/ToastContext';
 
 const ProfileSharingModal = ({ 
   isOpen = false, 
@@ -18,6 +19,7 @@ const ProfileSharingModal = ({
   const [inviteRole, setInviteRole] = useState('member');
   const [inviteMessage, setInviteMessage] = useState('');
   const [isInviting, setIsInviting] = useState(false);
+  const { success: showSuccess, error: showError } = useToast();
 
   useEffect(() => {
     if (isOpen && profile) {
@@ -67,7 +69,7 @@ const ProfileSharingModal = ({
       );
       
       if (result.error) {
-        alert('Failed to send invitation: ' + result.error);
+        showError('Failed to send invitation: ' + result.error);
         return;
       }
       
@@ -77,16 +79,10 @@ const ProfileSharingModal = ({
       setInviteMessage('');
       await loadProfileData();
       
-      // Show success message with instructions
-      alert(`Email invitation sent successfully! 
-
-An email has been sent to ${inviteEmail} with a secure 12-digit invitation code.
-
-The user can also join using the quick share code: ${profile.share_code}
-
-Note: If the email doesn't arrive, check the spam folder or share the profile using the 6-digit share code above.`);
+      // Show success toast
+      showSuccess(`Email invitation sent to ${inviteEmail}!`);
     } catch (error) {
-      alert('Failed to send invitation: ' + error.message);
+      showError('Failed to send invitation: ' + error.message);
     } finally {
       setIsInviting(false);
     }
@@ -98,15 +94,15 @@ Note: If the email doesn't arrive, check the spam folder or share the profile us
     try {
       const { data, error } = await profileSharingService.generateNewShareCode(profile.id);
       if (error) {
-        alert('Failed to generate new code: ' + error);
+        showError('Failed to generate new code: ' + error);
         return;
       }
       
       // Update the profile data with new share code
       profile.share_code = data.share_code;
       
-      // Show success message
-      alert('New share code generated: ' + data.share_code);
+      // Show success toast
+      showSuccess(`New share code generated: ${data.share_code}`);
       
       // Reload profile data to show the new code
       await loadProfileData();
@@ -115,7 +111,7 @@ Note: If the email doesn't arrive, check the spam folder or share the profile us
       onUpdate();
       
     } catch (error) {
-      alert('Failed to generate new code: ' + error.message);
+      showError('Failed to generate new code: ' + error.message);
     }
   };
 
@@ -125,14 +121,14 @@ Note: If the email doesn't arrive, check the spam folder or share the profile us
     try {
       const result = await profileSharingService.removeMember(profile.id, memberId);
       if (result.error) {
-        alert('Failed to remove member: ' + result.error);
+        showError('Failed to remove member: ' + result.error);
         return;
       }
       
       await loadProfileData();
-      alert('Member removed successfully');
+      showSuccess('Member removed successfully');
     } catch (error) {
-      alert('Failed to remove member: ' + error.message);
+      showError('Failed to remove member: ' + error.message);
     }
   };
 
@@ -140,13 +136,14 @@ Note: If the email doesn't arrive, check the spam folder or share the profile us
     try {
       const result = await profileSharingService.updateMemberRole(profile.id, memberId, newRole);
       if (result.error) {
-        alert('Failed to update role: ' + result.error);
+        showError('Failed to update role: ' + result.error);
         return;
       }
       
       await loadProfileData();
+      showSuccess('Member role updated successfully');
     } catch (error) {
-      alert('Failed to update role: ' + error.message);
+      showError('Failed to update role: ' + error.message);
     }
   };
 
@@ -210,16 +207,20 @@ Note: If the email doesn't arrive, check the spam folder or share the profile us
                       readOnly
                       className="font-mono text-sm"
                     />
-                    <Button
-                      onClick={() => {
-                        navigator.clipboard.writeText(profile.share_code);
-                        alert('Share code copied to clipboard!');
-                      }}
-                      variant="outline"
-                      size="sm"
-                    >
-                      Copy Code
-                    </Button>
+                                         <Button
+                       onClick={async () => {
+                         try {
+                           await navigator.clipboard.writeText(profile.share_code);
+                           showSuccess('Share code copied to clipboard!');
+                         } catch (error) {
+                           showError('Failed to copy code. Please copy manually: ' + profile.share_code);
+                         }
+                       }}
+                       variant="outline"
+                       size="sm"
+                     >
+                       Copy Code
+                     </Button>
                     <Button
                       onClick={handleGenerateNewCode}
                       variant="outline"

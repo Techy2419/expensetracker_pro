@@ -2,14 +2,17 @@ import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import ProfileSharingModal from '../../../components/ui/ProfileSharingModal';
 import { profileSharingService } from '../../../services/profileSharingService';
+import { useToast } from '../../../contexts/ToastContext';
 
 const ProfileCard = ({ 
   profile, 
   isSelected = false, 
   onClick = () => {},
+  onUpdate = () => {},
   className = ""
 }) => {
   const [showSharingModal, setShowSharingModal] = useState(false);
+  const { success: showSuccess, error: showError } = useToast();
 
   const getProfileIcon = (type) => {
     switch (type) {
@@ -57,14 +60,15 @@ const ProfileCard = ({
     setShowSharingModal(true);
   };
 
-  const handleCopyShareCode = (e) => {
+  const handleCopyShareCode = async (e) => {
     e.stopPropagation(); // Prevent profile selection
     if (profile?.share_code) {
-      navigator.clipboard.writeText(profile.share_code).then(() => {
-        alert('Share code copied to clipboard!');
-      }).catch(() => {
-        alert('Failed to copy code. Please copy manually: ' + profile.share_code);
-      });
+      try {
+        await navigator.clipboard.writeText(profile.share_code);
+        showSuccess('Share code copied to clipboard!');
+      } catch (error) {
+        showError('Failed to copy code. Please copy manually: ' + profile.share_code);
+      }
     }
   };
 
@@ -75,21 +79,22 @@ const ProfileCard = ({
     try {
       const { data, error } = await profileSharingService.generateNewShareCode(profile.id);
       if (error) {
-        alert('Failed to generate new code: ' + error);
+        showError('Failed to generate new code: ' + error);
         return;
       }
       
       // Update the profile data with new share code
       profile.share_code = data.share_code;
       
-      // Force re-render by updating parent state
-      // This will be handled by the parent component's refresh
-      alert('New share code generated: ' + data.share_code);
+      // Show success toast
+      showSuccess(`New share code generated: ${data.share_code}`);
       
-      // Trigger a page refresh to show the new code
-      window.location.reload();
+      // Trigger parent update to refresh the UI without page reload
+      if (onUpdate) {
+        onUpdate();
+      }
     } catch (error) {
-      alert('Failed to generate new code: ' + error.message);
+      showError('Failed to generate new code: ' + error.message);
     }
   };
 
@@ -253,10 +258,7 @@ const ProfileCard = ({
           isOpen={showSharingModal}
           profile={profile}
           onClose={() => setShowSharingModal(false)}
-          onUpdate={() => {
-            // Refresh profile data if needed
-            setShowSharingModal(false);
-          }}
+          onUpdate={onUpdate}
         />
       )}
     </>

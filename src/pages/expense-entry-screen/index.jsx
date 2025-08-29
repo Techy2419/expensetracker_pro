@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import NavigationHeader from '../../components/ui/NavigationHeader';
 import BottomNavigation from '../../components/ui/BottomNavigation';
 import FloatingActionButton from '../../components/ui/FloatingActionButton';
@@ -23,6 +24,7 @@ import { supabase } from '../../lib/supabase';
 const ExpenseEntryScreen = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { error: showError } = useToast();
   
   // Form state
   const [formData, setFormData] = useState({
@@ -242,7 +244,7 @@ const ExpenseEntryScreen = () => {
 
     if (error) {
       setIsSaving(false);
-      alert('Failed to save expense: ' + error);
+      showError('Failed to save expense: ' + error);
       return;
     }
 
@@ -270,7 +272,7 @@ const ExpenseEntryScreen = () => {
 
     if (error) {
       setIsSaving(false);
-      alert('Failed to save expense: ' + error);
+      showError('Failed to save expense: ' + error);
       return;
     }
 

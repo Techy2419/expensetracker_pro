@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { authService } from '../../services/authService';
 import { expenseService } from '../../services/expenseService';
 import { realTimeService } from '../../services/realTimeService';
@@ -41,6 +42,7 @@ const tailwindColorToHex = (colorClass) => {
 const DashboardScreen = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { error: showError } = useToast();
   const [currentProfile, setCurrentProfile] = useState(null);
   const [profiles, setProfiles] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -173,7 +175,7 @@ const DashboardScreen = () => {
       };
       const { data, error } = await expenseService?.createExpenseProfile(newProfileData);
       if (error) {
-        alert('Failed to create profile: ' + error);
+        showError('Failed to create profile: ' + error);
         return;
       }
       const transformedProfile = {
@@ -193,7 +195,7 @@ const DashboardScreen = () => {
       setCurrentProfile(transformedProfile);
       setIsProfileModalOpen(false);
     } catch (error) {
-      alert('Failed to create profile: ' + error?.message);
+      showError('Failed to create profile: ' + error?.message);
     }
   };
 

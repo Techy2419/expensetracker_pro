@@ -304,44 +304,34 @@ export const profileSharingService = {
     }
   },
 
-  // Get profile by invitation code or share code - SIMPLIFIED VERSION
+  // Get profile by invitation code or share code - UPDATED VERSION
   async getProfileByCode(code) {
     try {
       console.log('🔍 getProfileByCode called with:', code);
       
-      if (!code || code.length !== 12) {
-        return { data: null, error: 'Invalid code format. Code must be 12 characters.' };
+      if (!code) {
+        return { data: null, error: 'Please enter a code.' };
       }
       
-      // Try to find an invitation first (most common case)
-      console.log('🔍 Looking for invitation with code:', code);
-      const { data: invitation, error: invitationError } = await supabase
-        .from('profile_invitations')
-        .select('*')
-        .eq('invitation_code', code)
-        .eq('status', 'pending')
-        .maybeSingle(); // Use maybeSingle to avoid errors if no results
-      
-      console.log('📧 Invitation lookup result:', { invitation, invitationError });
-      
-      if (invitation && !invitationError) {
-        console.log('✅ Found invitation, getting profile details...');
+      // Handle 6-digit share codes
+      if (code.length === 6) {
+        console.log('🔍 Looking for profile with 6-digit share code:', code);
         
-        // Get profile details using invitation.profile_id
         const { data: profile, error: profileError } = await supabase
           .from('expense_profiles')
           .select('*')
-          .eq('id', invitation.profile_id)
+          .eq('share_code', code)
+          .eq('is_shared', true)
           .maybeSingle();
         
         if (profileError) {
-          console.error('❌ Profile lookup error:', profileError);
-          return { data: null, error: 'Failed to load profile details' };
+          console.error('❌ Profile share code lookup error:', profileError);
+          return { data: null, error: 'Failed to load profile' };
         }
         
         if (!profile) {
-          console.error('❌ No profile found for invitation');
-          return { data: null, error: 'Profile not found' };
+          console.error('❌ No profile found with share code:', code);
+          return { data: null, error: 'Invalid share code. Please check and try again.' };
         }
         
         // Get user info
@@ -351,61 +341,81 @@ export const profileSharingService = {
           .eq('id', profile.user_id)
           .maybeSingle();
         
-        console.log('👤 User lookup result:', { user, userError });
-        
-        // Return combined data
         const result = {
           ...profile,
           user_profiles: user || { 
             id: profile.user_id, 
             full_name: 'Profile Owner', 
             email: 'owner@example.com' 
-          },
-          invitation: invitation
+          }
         };
         
-        console.log('✅ Successfully loaded profile with invitation:', result);
+        console.log('✅ Successfully loaded profile with share code:', result);
         return { data: result, error: null };
       }
       
-      // If no invitation found, try profile share code
-      console.log('🔄 No invitation found, trying profile share code...');
-      
-      const { data: profile, error: profileError } = await supabase
-        .from('expense_profiles')
-        .select('*')
-        .eq('share_code', code)
-        .eq('is_shared', true)
-        .maybeSingle();
-      
-      if (profileError) {
-        console.error('❌ Profile share code lookup error:', profileError);
-        return { data: null, error: 'Failed to load profile' };
-      }
-      
-      if (!profile) {
-        console.error('❌ No profile found with share code:', code);
-        return { data: null, error: 'Invalid code. Please check and try again.' };
-      }
-      
-      // Get user info
-      const { data: user, error: userError } = await supabase
-        .from('user_profiles')
-        .select('id, full_name, email')
-        .eq('id', profile.user_id)
-        .maybeSingle();
-      
-      const result = {
-        ...profile,
-        user_profiles: user || { 
-          id: profile.user_id, 
-          full_name: 'Profile Owner', 
-          email: 'owner@example.com' 
+      // Handle 12-digit invitation codes
+      if (code.length === 12) {
+        console.log('🔍 Looking for invitation with 12-digit code:', code);
+        
+        const { data: invitation, error: invitationError } = await supabase
+          .from('profile_invitations')
+          .select('*')
+          .eq('invitation_code', code)
+          .eq('status', 'pending')
+          .maybeSingle();
+        
+        console.log('📧 Invitation lookup result:', { invitation, invitationError });
+        
+        if (invitation && !invitationError) {
+          console.log('✅ Found invitation, getting profile details...');
+          
+          // Get profile details using invitation.profile_id
+          const { data: profile, error: profileError } = await supabase
+            .from('expense_profiles')
+            .select('*')
+            .eq('id', invitation.profile_id)
+            .maybeSingle();
+          
+          if (profileError) {
+            console.error('❌ Profile lookup error:', profileError);
+            return { data: null, error: 'Failed to load profile details' };
+          }
+          
+          if (!profile) {
+            console.error('❌ No profile found for invitation');
+            return { data: null, error: 'Profile not found' };
+          }
+          
+          // Get user info
+          const { data: user, error: userError } = await supabase
+            .from('user_profiles')
+            .select('id, full_name, email')
+            .eq('id', profile.user_id)
+            .maybeSingle();
+          
+          console.log('👤 User lookup result:', { user, userError });
+          
+          // Return combined data
+          const result = {
+            ...profile,
+            user_profiles: user || { 
+              id: profile.user_id, 
+              full_name: 'Profile Owner', 
+              email: 'owner@example.com' 
+            },
+            invitation: invitation
+          };
+          
+          console.log('✅ Successfully loaded profile with invitation:', result);
+          return { data: result, error: null };
         }
-      };
+        
+        return { data: null, error: 'Invalid invitation code. Please check and try again.' };
+      }
       
-      console.log('✅ Successfully loaded profile with share code:', result);
-      return { data: result, error: null };
+      // Invalid code length
+      return { data: null, error: 'Invalid code format. Code must be 6 digits (share code) or 12 digits (invitation code).' };
       
     } catch (error) {
       console.error('💥 Exception in getProfileByCode:', error);

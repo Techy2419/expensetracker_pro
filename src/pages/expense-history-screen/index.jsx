@@ -17,10 +17,12 @@ import { expenseService } from '../../services/expenseService';
 import { authService } from '../../services/authService';
 import { realTimeService } from '../../services/realTimeService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 
 const ExpenseHistoryScreen = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { info: showInfo } = useToast();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -270,7 +272,7 @@ const ExpenseHistoryScreen = () => {
   const handleExport = (exportOptions) => {
     console.log('Exporting with options:', exportOptions);
     // Simulate export process
-    alert(`Exporting ${exportOptions?.format?.toUpperCase()} report...`);
+            showInfo(`Exporting ${exportOptions?.format?.toUpperCase()} report...`);
   };
 
   const hasActiveFilters = () => {

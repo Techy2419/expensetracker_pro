@@ -1,5 +1,6 @@
 import React from "react";
 import { AuthProvider } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 import Routes from './Routes';
 import { inject } from "@vercel/analytics";
 
@@ -9,7 +10,9 @@ function App() {
   
   return (
     <AuthProvider>
-      <Routes />
+      <ToastProvider>
+        <Routes />
+      </ToastProvider>
     </AuthProvider>
   );
 }

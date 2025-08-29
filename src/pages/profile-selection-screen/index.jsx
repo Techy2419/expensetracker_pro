@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { expenseService } from '../../services/expenseService';
 import { profileSharingService } from '../../services/profileSharingService';
 import { supabase } from '../../lib/supabase';
@@ -12,6 +13,7 @@ import ProfileCreationModal from './components/ProfileCreationModal';
 const ProfileSelectionScreen = () => {
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
+  const { success: showSuccess, error: showError } = useToast();
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [profiles, setProfiles] = useState([]);
@@ -154,14 +156,13 @@ const ProfileSelectionScreen = () => {
         return;
       }
 
-      setJoinSuccess('Successfully joined the profile! Refreshing your profile list...');
+      // Show success toast
+      showSuccess(`Successfully joined ${data.name}!`);
       setJoinCode('');
+      setJoinSuccess('');
       
-      // Refresh profiles to show the newly joined profile
-      setTimeout(() => {
-        loadExpenseProfiles();
-        setJoinSuccess('');
-      }, 2000);
+      // Immediately refresh profiles to show the newly joined profile
+      await loadExpenseProfiles();
 
     } catch (error) {
       setJoinError('Failed to join profile. Please try again.');
@@ -289,7 +290,7 @@ const ProfileSelectionScreen = () => {
                   type="text"
                   placeholder="Enter 6-digit code"
                   maxLength={6}
-                  className="flex-1 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-center text-lg font-mono tracking-widest"
+                  className="flex-1 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-center text-lg font-mono tracking-widest text-card-foreground bg-background"
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, ''))}
                 />
@@ -348,6 +349,7 @@ const ProfileSelectionScreen = () => {
                     profile={profile}
                     isSelected={selectedProfile?.id === profile?.id}
                     onClick={handleProfileSelect}
+                    onUpdate={loadExpenseProfiles}
                   />
                 ))}
 

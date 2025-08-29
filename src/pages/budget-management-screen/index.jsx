@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import NavigationHeader from '../../components/ui/NavigationHeader';
 import BottomNavigation from '../../components/ui/BottomNavigation';
 import FloatingActionButton from '../../components/ui/FloatingActionButton';
@@ -27,6 +28,7 @@ const periodOptions = [
 const BudgetManagementScreen = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { error: showError } = useToast();
   const [selectedPeriod, setSelectedPeriod] = useState('monthly');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -158,12 +160,12 @@ const BudgetManagementScreen = () => {
     // Support both string and object for category
     const categoryEnum = getCategoryEnumValue(updatedCategory.category);
     if (!categoryEnum || !allowedCategoryEnums.includes(categoryEnum)) {
-      alert('Selected category is not supported for budgets. Please choose a standard category.');
+      showError('Selected category is not supported for budgets. Please choose a standard category.');
       setIsLoading(false);
       return;
     }
     if (!updatedCategory.budget || isNaN(parseFloat(updatedCategory.budget))) {
-      alert('Please enter a valid budget amount.');
+      showError('Please enter a valid budget amount.');
       setIsLoading(false);
       return;
     }
