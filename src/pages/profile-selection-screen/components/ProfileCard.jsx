@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import ProfileSharingModal from '../../../components/ui/ProfileSharingModal';
+import { profileSharingService } from '../../../services/profileSharingService';
 
 const ProfileCard = ({ 
   profile, 
@@ -59,12 +60,36 @@ const ProfileCard = ({
   const handleCopyShareCode = (e) => {
     e.stopPropagation(); // Prevent profile selection
     if (profile?.share_code) {
-      const shareUrl = `${window.location.origin}/join-profile/${profile.share_code}`;
-      navigator.clipboard.writeText(shareUrl).then(() => {
-        alert('Share link copied to clipboard!');
+      navigator.clipboard.writeText(profile.share_code).then(() => {
+        alert('Share code copied to clipboard!');
       }).catch(() => {
-        alert('Failed to copy link. Please copy manually: ' + shareUrl);
+        alert('Failed to copy code. Please copy manually: ' + profile.share_code);
       });
+    }
+  };
+
+  const handleGenerateNewCode = async (e) => {
+    e.stopPropagation(); // Prevent profile selection
+    if (!profile?.is_owner) return;
+    
+    try {
+      const { data, error } = await profileSharingService.generateNewShareCode(profile.id);
+      if (error) {
+        alert('Failed to generate new code: ' + error);
+        return;
+      }
+      
+      // Update the profile data with new share code
+      profile.share_code = data.share_code;
+      
+      // Force re-render by updating parent state
+      // This will be handled by the parent component's refresh
+      alert('New share code generated: ' + data.share_code);
+      
+      // Trigger a page refresh to show the new code
+      window.location.reload();
+    } catch (error) {
+      alert('Failed to generate new code: ' + error.message);
     }
   };
 
@@ -124,18 +149,31 @@ const ProfileCard = ({
         {isSharedProfile && profile?.share_code && (
           <div className="mb-4 p-3 bg-muted/30 rounded-lg border border-border">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">Share Code</span>
-                          <div
-              onClick={handleCopyShareCode}
-              className="text-xs text-accent hover:text-accent/80 transition-colors cursor-pointer"
-            >
-              Copy Link
-            </div>
+              <span className="text-xs font-medium text-muted-foreground">Quick Share Code (6 digits)</span>
+              <div className="flex items-center space-x-2">
+                <div
+                  onClick={handleCopyShareCode}
+                  className="text-xs text-accent hover:text-accent/80 transition-colors cursor-pointer"
+                >
+                  Copy Code
+                </div>
+                {profile?.is_owner && (
+                  <div
+                    onClick={handleGenerateNewCode}
+                    className="text-xs text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                  >
+                    Generate New
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center space-x-2">
-              <code className="text-xs bg-background px-2 py-1 rounded border font-mono text-card-foreground">
+              <code className="text-sm bg-background px-3 py-2 rounded border font-mono text-card-foreground font-bold tracking-wider">
                 {profile.share_code}
               </code>
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">
+              Share this code with others to let them join instantly
             </div>
           </div>
         )}

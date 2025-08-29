@@ -15,6 +15,7 @@ import EmptyState from './components/EmptyState';
 import ExportModal from './components/ExportModal';
 import { expenseService } from '../../services/expenseService';
 import { authService } from '../../services/authService';
+import { realTimeService } from '../../services/realTimeService';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ExpenseHistoryScreen = () => {
@@ -60,6 +61,52 @@ const ExpenseHistoryScreen = () => {
       setIsLoading(false);
     };
     fetchData();
+  }, []);
+
+  // Real-time subscription effect
+  useEffect(() => {
+    if (!currentProfile?.id) return;
+
+    console.log('🔔 Setting up real-time subscription for expense history, profile:', currentProfile.id);
+
+    // Subscribe to real-time updates for the current profile
+    const subscription = realTimeService.subscribeToProfileExpenses(currentProfile.id, async (payload) => {
+      console.log('📡 Real-time expense update received in history:', payload);
+      
+      // Handle different types of updates
+      if (payload.table === 'expenses') {
+        if (payload.eventType === 'INSERT') {
+          // New expense added
+          console.log('➕ New expense added, refreshing transactions...');
+          const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
+          setTransactions(fetchedTransactions || []);
+        } else if (payload.eventType === 'UPDATE') {
+          // Expense updated
+          console.log('✏️ Expense updated, refreshing transactions...');
+          const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
+          setTransactions(fetchedTransactions || []);
+        } else if (payload.eventType === 'DELETE') {
+          // Expense deleted
+          console.log('🗑️ Expense deleted, refreshing transactions...');
+          const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
+          setTransactions(fetchedTransactions || []);
+        }
+      }
+    });
+
+    // Cleanup subscription when component unmounts or profile changes
+    return () => {
+      console.log('🔕 Cleaning up real-time subscription for expense history, profile:', currentProfile.id);
+      realTimeService.unsubscribeFromProfileExpenses(currentProfile.id);
+    };
+  }, [currentProfile?.id]);
+
+  // Cleanup all subscriptions when component unmounts
+  useEffect(() => {
+    return () => {
+      console.log('🔕 Expense history unmounting, cleaning up all subscriptions');
+      realTimeService.unsubscribeFromAll();
+    };
   }, []);
 
   // Handle profile change

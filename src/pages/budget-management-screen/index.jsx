@@ -15,6 +15,7 @@ import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
 import { expenseService } from '../../services/expenseService';
 import { authService } from '../../services/authService';
+import { realTimeService } from '../../services/realTimeService';
 
 const periodOptions = [
   { value: 'weekly', label: 'Weekly' },
@@ -62,6 +63,58 @@ const BudgetManagementScreen = () => {
       setIsLoading(false);
     };
     fetchData();
+  }, []);
+
+  // Real-time subscription effect
+  useEffect(() => {
+    if (!currentProfile?.id) return;
+
+    console.log('🔔 Setting up real-time subscription for budget management, profile:', currentProfile.id);
+
+    // Subscribe to real-time updates for the current profile
+    const subscription = realTimeService.subscribeToProfileExpenses(currentProfile.id, async (payload) => {
+      console.log('📡 Real-time update received in budget management:', payload);
+      
+      // Handle different types of updates
+      if (payload.table === 'budgets') {
+        // Budget updated
+        console.log('💰 Budget updated, refreshing budgets...');
+        const { data: fetchedBudgets } = await expenseService.getBudgets(currentProfile.id);
+        setBudgets(fetchedBudgets || []);
+      } else if (payload.table === 'expenses') {
+        // Expense updated - this affects budget calculations
+        console.log('💸 Expense updated, refreshing budgets...');
+        const { data: fetchedBudgets } = await expenseService.getBudgets(currentProfile.id);
+        setBudgets(fetchedBudgets || []);
+      } else if (payload.table === 'expense_profiles') {
+        // Profile updated (balance, monthly_spent, etc.)
+        console.log('📊 Profile updated, refreshing profile data...');
+        const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user?.id);
+        setProfiles(fetchedProfiles || []);
+        
+        // Update current profile if it's the same one
+        if (fetchedProfiles) {
+          const updatedProfile = fetchedProfiles.find(p => p.id === currentProfile.id);
+          if (updatedProfile) {
+            setCurrentProfile(updatedProfile);
+          }
+        }
+      }
+    });
+
+    // Cleanup subscription when component unmounts or profile changes
+    return () => {
+      console.log('🔕 Cleaning up real-time subscription for budget management, profile:', currentProfile.id);
+      realTimeService.unsubscribeFromProfileExpenses(currentProfile.id);
+    };
+  }, [currentProfile?.id, user?.id]);
+
+  // Cleanup all subscriptions when component unmounts
+  useEffect(() => {
+    return () => {
+      console.log('🔕 Budget management unmounting, cleaning up all subscriptions');
+      realTimeService.unsubscribeFromAll();
+    };
   }, []);
 
   // Handle profile change

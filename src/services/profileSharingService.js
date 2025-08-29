@@ -413,6 +413,29 @@ export const profileSharingService = {
     }
   },
 
+  // Generate new 6-digit share code
+  async generateNewShareCode(profileId) {
+    try {
+      // Generate a new 6-digit code
+      const newShareCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      const { data, error } = await supabase
+        .from('expense_profiles')
+        .update({ share_code: newShareCode })
+        .eq('id', profileId)
+        .select('share_code')
+        .single();
+      
+      if (error) {
+        return { data: null, error: error.message };
+      }
+      
+      return { data: { share_code: data.share_code }, error: null };
+    } catch (error) {
+      return { data: null, error: error.message };
+    }
+  },
+
   // Update profile sharing settings
   async updateProfileSharing(profileId, isShared, shareSettings) {
     try {
@@ -420,7 +443,7 @@ export const profileSharingService = {
       
       if (isShared) {
         updates.share_settings = shareSettings;
-        // Generate share code if not exists using database function
+        // Generate 6-digit share code if not exists
         const { data: existingProfile } = await supabase
           .from('expense_profiles')
           .select('share_code')
@@ -428,15 +451,9 @@ export const profileSharingService = {
           .single();
         
         if (!existingProfile?.share_code) {
-          // Use the database function to generate a unique share code
-          const { data: codeData, error: codeError } = await supabase.rpc('generate_share_code');
-          if (codeError) {
-            console.error('Error generating share code:', codeError);
-            // Fallback to simple generation if database function fails
-            updates.share_code = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-          } else {
-            updates.share_code = codeData;
-          }
+          // Generate a new 6-digit share code
+          const newShareCode = Math.floor(100000 + Math.random() * 900000).toString();
+          updates.share_code = newShareCode;
         }
       } else {
         updates.share_code = null;

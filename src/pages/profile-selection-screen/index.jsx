@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { expenseService } from '../../services/expenseService';
+import { profileSharingService } from '../../services/profileSharingService';
+import { supabase } from '../../lib/supabase';
 import ProfileHeader from './components/ProfileHeader';
 import ProfileCard from './components/ProfileCard';
 import AddProfileCard from './components/AddProfileCard';
@@ -15,6 +17,10 @@ const ProfileSelectionScreen = () => {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState('');
+  const [joinSuccess, setJoinSuccess] = useState('');
 
   useEffect(() => {
     if (authLoading) return;
@@ -88,6 +94,80 @@ const ProfileSelectionScreen = () => {
     setTimeout(() => {
       navigate('/dashboard-screen');
     }, 300);
+  };
+
+  const handleJoinByCode = async () => {
+    if (!joinCode || joinCode.length !== 6) {
+      setJoinError('Please enter a valid 6-digit code');
+      return;
+    }
+
+    setIsJoining(true);
+    setJoinError('');
+    setJoinSuccess('');
+
+    try {
+      // Use the profile sharing service to join by code
+      const { data, error } = await profileSharingService.getProfileByCode(joinCode);
+      
+      if (error) {
+        setJoinError(`Failed to join profile: ${error}`);
+        return;
+      }
+
+      if (!data) {
+        setJoinError('Invalid share code. Please check the code and try again.');
+        return;
+      }
+
+      // Check if user already has access to this profile
+      const existingProfile = profiles.find(p => p.id === data.id);
+      if (existingProfile) {
+        setJoinError('You already have access to this profile.');
+        return;
+      }
+
+      // Join the profile using the existing join logic
+      const userProfileResult = await profileSharingService.ensureUserProfileExists(user.id);
+      if (!userProfileResult.success) {
+        setJoinError('Failed to verify user account. Please try again.');
+        return;
+      }
+
+      // Add user as member to the profile
+      const memberData = {
+        profile_id: data.id,
+        user_id: user.id,
+        role: 'member',
+        permissions: { view: true, edit: false, delete: false, invite: false },
+        status: 'active',
+        invited_by: null,
+        joined_at: new Date().toISOString()
+      };
+
+      const { error: insertError } = await supabase
+        .from('profile_members')
+        .insert(memberData);
+
+      if (insertError) {
+        setJoinError('Failed to join profile: ' + insertError.message);
+        return;
+      }
+
+      setJoinSuccess('Successfully joined the profile! Refreshing your profile list...');
+      setJoinCode('');
+      
+      // Refresh profiles to show the newly joined profile
+      setTimeout(() => {
+        loadExpenseProfiles();
+        setJoinSuccess('');
+      }, 2000);
+
+    } catch (error) {
+      setJoinError('Failed to join profile. Please try again.');
+    } finally {
+      setIsJoining(false);
+    }
   };
 
   const handleCreateProfile = async (profileData) => {
@@ -190,6 +270,50 @@ const ProfileSelectionScreen = () => {
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Select a profile to manage your expenses, or create a new one for different categories like personal, family, or business expenses.
             </p>
+          </div>
+
+          {/* Join Profile by Code Section */}
+          <div className="mb-8 bg-card border border-border rounded-lg p-6">
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-semibold text-card-foreground mb-2">
+                Join a Shared Profile
+              </h2>
+              <p className="text-muted-foreground">
+                Enter a 6-digit share code to join an existing shared profile
+              </p>
+            </div>
+            
+            <div className="max-w-md mx-auto">
+              <div className="flex space-x-3">
+                <input
+                  type="text"
+                  placeholder="Enter 6-digit code"
+                  maxLength={6}
+                  className="flex-1 px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-center text-lg font-mono tracking-widest"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, ''))}
+                />
+                <button
+                  onClick={handleJoinByCode}
+                  disabled={!joinCode || joinCode.length !== 6 || isJoining}
+                  className="px-6 py-3 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                >
+                  {isJoining ? 'Joining...' : 'Join Profile'}
+                </button>
+              </div>
+              
+              {joinError && (
+                <div className="mt-3 p-3 bg-error/10 border border-error/20 rounded-lg">
+                  <p className="text-error text-sm text-center">{joinError}</p>
+                </div>
+              )}
+              
+              {joinSuccess && (
+                <div className="mt-3 p-3 bg-success/10 border border-success/20 rounded-lg">
+                  <p className="text-sm text-center text-success">{joinSuccess}</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Error Message */}

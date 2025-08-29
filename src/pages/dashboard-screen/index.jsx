@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/authService';
 import { expenseService } from '../../services/expenseService';
+import { realTimeService } from '../../services/realTimeService';
 import NavigationHeader from '../../components/ui/NavigationHeader';
 import BottomNavigation from '../../components/ui/BottomNavigation';
 import FloatingActionButton from '../../components/ui/FloatingActionButton';
@@ -14,6 +15,7 @@ import AppIcon from '../../components/AppIcon';
 import MonthlyOverview from './components/MonthlyOverview';
 import AchievementNotifications from './components/AchievementNotifications';
 import SpendingInsights from './components/SpendingInsights';
+import LiveUpdateNotification from '../../components/ui/LiveUpdateNotification';
 // Import predefinedCategories from CategorySelector
 import { predefinedCategories } from '../expense-entry-screen/components/CategorySelector';
 
@@ -45,6 +47,7 @@ const DashboardScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
   // Fetch profiles and transactions from Supabase
   useEffect(() => {
@@ -76,6 +79,69 @@ const DashboardScreen = () => {
     fetchData();
   }, []);
 
+  // Real-time subscription effect
+  useEffect(() => {
+    if (!currentProfile?.id) return;
+
+    console.log('🔔 Setting up real-time subscription for profile:', currentProfile.id);
+
+    // Subscribe to real-time updates for the current profile
+    const subscription = realTimeService.subscribeToProfileExpenses(currentProfile.id, async (payload) => {
+      console.log('📡 Real-time update received:', payload);
+      
+      // Handle different types of updates
+      if (payload.table === 'expenses') {
+        if (payload.eventType === 'INSERT') {
+          // New expense added
+          console.log('➕ New expense added, refreshing transactions...');
+          const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
+          setTransactions(fetchedTransactions || []);
+        } else if (payload.eventType === 'UPDATE') {
+          // Expense updated
+          console.log('✏️ Expense updated, refreshing transactions...');
+          const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
+          setTransactions(fetchedTransactions || []);
+        } else if (payload.eventType === 'DELETE') {
+          // Expense deleted
+          console.log('🗑️ Expense deleted, refreshing transactions...');
+          const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
+          setTransactions(fetchedTransactions || []);
+        }
+      } else if (payload.table === 'expense_profiles') {
+        // Profile updated (balance, monthly_spent, etc.)
+        console.log('📊 Profile updated, refreshing profile data...');
+        const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user?.id);
+        setProfiles(fetchedProfiles || []);
+        
+        // Update current profile if it's the same one
+        if (fetchedProfiles) {
+          const updatedProfile = fetchedProfiles.find(p => p.id === currentProfile.id);
+          if (updatedProfile) {
+            setCurrentProfile(updatedProfile);
+          }
+        }
+      } else if (payload.table === 'budgets') {
+        // Budget updated
+        console.log('💰 Budget updated, refreshing data...');
+        // You can add budget refresh logic here if needed
+      }
+    });
+
+    // Cleanup subscription when component unmounts or profile changes
+    return () => {
+      console.log('🔕 Cleaning up real-time subscription for profile:', currentProfile.id);
+      realTimeService.unsubscribeFromProfileExpenses(currentProfile.id);
+    };
+  }, [currentProfile?.id, user?.id]);
+
+  // Cleanup all subscriptions when component unmounts
+  useEffect(() => {
+    return () => {
+      console.log('🔕 Dashboard unmounting, cleaning up all subscriptions');
+      realTimeService.unsubscribeFromAll();
+    };
+  }, []);
+
   // Handle profile change
   const handleProfileChange = async (profile) => {
     setCurrentProfile(profile);
@@ -84,6 +150,9 @@ const DashboardScreen = () => {
     const { data: fetchedTransactions } = await expenseService.getExpenses(profile.id);
     setTransactions(fetchedTransactions || []);
     setIsLoading(false);
+    
+    // The real-time subscription will automatically update when currentProfile changes
+    // due to the useEffect dependency on currentProfile?.id
   };
 
   const handleAddProfile = () => {
@@ -136,6 +205,17 @@ const DashboardScreen = () => {
   // Handle user menu
   const handleUserMenuClick = () => {
     // Optionally implement user menu logic here
+  };
+
+  // Add notification
+  const addNotification = (message, type = 'info') => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message, type }]);
+  };
+
+  // Remove notification
+  const removeNotification = (id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   // Handle expense addition
@@ -287,6 +367,16 @@ const DashboardScreen = () => {
 
       {/* Main Content */}
       <main className="pt-20 md:pt-36 pb-20 md:pb-6 px-4 lg:px-6">
+        {/* Live Update Notifications */}
+        {notifications.map(notification => (
+          <LiveUpdateNotification
+            key={notification.id}
+            message={notification.message}
+            type={notification.type}
+            onClose={() => removeNotification(notification.id)}
+          />
+        ))}
+        
         <div className="max-w-7xl mx-auto">
           {/* Pull to Refresh Indicator */}
           {refreshing && (
@@ -297,13 +387,22 @@ const DashboardScreen = () => {
 
           {/* Switch Profile Button */}
           <div className="mb-6 flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">
-                {currentProfile?.name || 'Dashboard'}
-              </h1>
-              <p className="text-muted-foreground">
-                {currentProfile?.type ? `${currentProfile.type.charAt(0).toUpperCase() + currentProfile.type.slice(1)} Profile` : 'Select a profile to get started'}
-              </p>
+            <div className="flex items-center space-x-4">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">
+                  {currentProfile?.name || 'Dashboard'}
+                </h1>
+                <p className="text-muted-foreground">
+                  {currentProfile?.type ? `${currentProfile.type.charAt(0).toUpperCase() + currentProfile.type.slice(1)} Profile` : 'Select a profile to get started'}
+                </p>
+              </div>
+              {/* Live Updates Indicator */}
+              {currentProfile?.is_shared && (
+                <div className="flex items-center space-x-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span>Live Updates</span>
+                </div>
+              )}
             </div>
             <button
               onClick={() => navigate('/profile-selection-screen')}

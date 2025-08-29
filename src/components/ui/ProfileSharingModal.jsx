@@ -78,17 +78,44 @@ const ProfileSharingModal = ({
       await loadProfileData();
       
       // Show success message with instructions
-      alert(`Invitation sent successfully! 
+      alert(`Email invitation sent successfully! 
 
-An email has been sent to ${inviteEmail} with the invitation details.
+An email has been sent to ${inviteEmail} with a secure 12-digit invitation code.
 
-The user can also join using the share code: ${profile.share_code}
+The user can also join using the quick share code: ${profile.share_code}
 
-Note: If the email doesn't arrive, check the spam folder or share the profile using the share link above.`);
+Note: If the email doesn't arrive, check the spam folder or share the profile using the 6-digit share code above.`);
     } catch (error) {
       alert('Failed to send invitation: ' + error.message);
     } finally {
       setIsInviting(false);
+    }
+  };
+
+  const handleGenerateNewCode = async () => {
+    if (!profile?.is_owner) return;
+    
+    try {
+      const { data, error } = await profileSharingService.generateNewShareCode(profile.id);
+      if (error) {
+        alert('Failed to generate new code: ' + error);
+        return;
+      }
+      
+      // Update the profile data with new share code
+      profile.share_code = data.share_code;
+      
+      // Show success message
+      alert('New share code generated: ' + data.share_code);
+      
+      // Reload profile data to show the new code
+      await loadProfileData();
+      
+      // Trigger parent update
+      onUpdate();
+      
+    } catch (error) {
+      alert('Failed to generate new code: ' + error.message);
     }
   };
 
@@ -123,16 +150,7 @@ Note: If the email doesn't arrive, check the spam folder or share the profile us
     }
   };
 
-  const handleCopyShareLink = () => {
-    if (!profile?.share_code) return;
-    
-    const shareUrl = `${window.location.origin}/join-profile/${profile.share_code}`;
-    navigator.clipboard.writeText(shareUrl).then(() => {
-      alert('Share link copied to clipboard!');
-    }).catch(() => {
-      alert('Failed to copy link. Please copy manually: ' + shareUrl);
-    });
-  };
+
 
   const getRoleBadgeColor = (role) => {
     switch (role) {
@@ -184,7 +202,7 @@ Note: If the email doesn't arrive, check the spam folder or share the profile us
               <div className="flex items-center space-x-3">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-card-foreground mb-1">
-                    Share Code
+                    Share Code (6 digits)
                   </label>
                   <div className="flex items-center space-x-2">
                     <Input
@@ -202,37 +220,24 @@ Note: If the email doesn't arrive, check the spam folder or share the profile us
                     >
                       Copy Code
                     </Button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-card-foreground mb-1">
-                    Share Link
-                  </label>
-                  <div className="flex items-center space-x-2">
-                    <Input
-                      value={`${window.location.origin}/join-profile/${profile.share_code}`}
-                      readOnly
-                      className="font-mono text-sm"
-                    />
                     <Button
-                      onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/join-profile/${profile.share_code}`);
-                        alert('Share link copied to clipboard!');
-                      }}
+                      onClick={handleGenerateNewCode}
                       variant="outline"
                       size="sm"
+                      className="text-blue-600 hover:text-blue-800 border-blue-200 hover:border-blue-300"
                     >
-                      Copy Link
+                      Generate New
                     </Button>
                   </div>
                 </div>
               </div>
               
+
+              
               <div className="text-sm text-muted-foreground bg-background p-3 rounded-lg border">
-                <strong>How to share:</strong> Send the share code or link to someone. They can join your profile by visiting the link or entering the code on the join profile page.
+                <strong>Two ways to share:</strong><br/>
+                • <strong>Quick Share:</strong> Send the 6-digit share code to someone. They can enter it on the profile selection page to join instantly.<br/>
+                • <strong>Email Invitation:</strong> Use the "Invite New Member" tab to send secure email invitations with 12-digit codes.
               </div>
             </div>
           </div>
@@ -288,15 +293,6 @@ Note: If the email doesn't arrive, check the spam folder or share the profile us
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-medium text-card-foreground">Profile Members</h3>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleCopyShareLink}
-                        iconName="Copy"
-                        iconPosition="left"
-                      >
-                        Copy Share Link
-                      </Button>
                     </div>
                     
                     {members.length === 0 ? (
@@ -377,7 +373,7 @@ Note: If the email doesn't arrive, check the spam folder or share the profile us
                         <div>
                           <h4 className="font-medium text-blue-800">Email Invitations Sent</h4>
                           <p className="text-sm text-blue-700 mt-1">
-                            These invitations have been sent via email. Users can join using the email link or the share code above.
+                            These invitations have been sent via email with secure 12-digit codes. Users can join using the email invitation or the 6-digit share code above.
                           </p>
                         </div>
                       </div>
