@@ -27,6 +27,18 @@ const ProfileSelectionScreen = () => {
     loadExpenseProfiles();
   }, [user, authLoading, navigate]);
 
+  // Add effect to refresh profiles when returning to this screen
+  useEffect(() => {
+    const handleFocus = () => {
+      if (user && !authLoading) {
+        loadExpenseProfiles();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [user, authLoading]);
+
   const loadExpenseProfiles = async () => {
     if (!user?.id) return;
     
@@ -54,7 +66,8 @@ const ProfileSelectionScreen = () => {
         createdAt: profile?.created_at,
         is_shared: profile?.is_shared,
         share_code: profile?.share_code,
-        share_settings: profile?.share_settings
+        share_settings: profile?.share_settings,
+        is_owner: profile?.user_id === user?.id // Add flag to identify owned vs joined profiles
       })) || [];
       
       setProfiles(transformedProfiles);
@@ -110,7 +123,8 @@ const ProfileSelectionScreen = () => {
         createdAt: data?.created_at,
         is_shared: data?.is_shared,
         share_code: data?.share_code,
-        share_settings: data?.share_settings
+        share_settings: data?.share_settings,
+        is_owner: true // New profiles are always owned by the creator
       };
       
       setProfiles(prev => [transformedProfile, ...prev]);
@@ -158,6 +172,18 @@ const ProfileSelectionScreen = () => {
         <div className="max-w-6xl mx-auto px-4 py-8 lg:px-6 lg:py-12">
           {/* Page Header */}
           <div className="text-center mb-8 lg:mb-12">
+            <div className="flex items-center justify-between mb-4">
+              <div></div> {/* Spacer */}
+              <button
+                onClick={loadExpenseProfiles}
+                disabled={loading}
+                className="flex items-center space-x-2 px-4 py-2 text-sm bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+                title="Refresh profiles"
+              >
+                <div className={`w-4 h-4 border-2 border-current border-t-transparent rounded-full ${loading ? 'animate-spin' : ''}`}></div>
+                <span>Refresh</span>
+              </button>
+            </div>
             <h1 className="text-2xl lg:text-3xl font-bold text-foreground mb-3">
               Choose Your Profile
             </h1>

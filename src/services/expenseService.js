@@ -1,15 +1,49 @@
 import { supabase } from '../lib/supabase';
 
 export const expenseService = {
-  // Get user's expense profiles
+  // Get user's expense profiles (owned + shared as member)
   async getExpenseProfiles(userId) {
     try {
-      const { data, error } = await supabase?.from('expense_profiles')?.select('*')?.eq('user_id', userId)?.order('created_at', { ascending: false });
+      // Get profiles owned by the user
+      const { data: ownedProfiles, error: ownedError } = await supabase
+        .from('expense_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
       
-      if (error) {
-        return { data: null, error: error?.message };
+      if (ownedError) {
+        return { data: null, error: ownedError.message };
       }
-      return { data, error: null };
+      
+      // Get profiles where user is a member (shared profiles)
+      const { data: memberProfiles, error: memberError } = await supabase
+        .from('profile_members')
+        .select(`
+          profile:expense_profiles(*)
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'active');
+      
+      if (memberError) {
+        console.warn('Failed to load member profiles:', memberError);
+        // Don't fail the whole operation if this fails
+      }
+      
+      // Combine and deduplicate profiles
+      const allProfiles = [...(ownedProfiles || [])];
+      
+      if (memberProfiles) {
+        memberProfiles.forEach(member => {
+          if (member.profile && !allProfiles.find(p => p.id === member.profile.id)) {
+            allProfiles.push(member.profile);
+          }
+        });
+      }
+      
+      // Sort by creation date
+      allProfiles.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
+      return { data: allProfiles, error: null };
     } catch (error) {
       return { data: null, error: error?.message };
     }

@@ -94,6 +94,11 @@ const ProfileCard = ({
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-semibold text-card-foreground group-hover:text-accent transition-colors duration-200">
               {profile?.name}
+              {!profile?.is_owner && (
+                <span className="ml-2 text-sm text-muted-foreground">
+                  (Member)
+                </span>
+              )}
             </h3>
             <div className="flex items-center space-x-2">
               <p className="text-sm text-muted-foreground capitalize">
@@ -101,7 +106,7 @@ const ProfileCard = ({
               </p>
               {isSharedProfile && (
                 <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                  Shared
+                  {profile?.is_owner ? 'Shared' : 'Joined'}
                 </span>
               )}
             </div>
@@ -174,7 +179,7 @@ const ProfileCard = ({
         </div>
 
         {/* Action Buttons for Shared Profiles */}
-        {isSharedProfile && (
+        {isSharedProfile && profile?.is_owner && (
           <div className="mt-4 pt-4 border-t border-border">
             <button
               onClick={handleShareClick}
@@ -183,6 +188,16 @@ const ProfileCard = ({
               <Icon name="Users" size={16} />
               <span>Manage Sharing</span>
             </button>
+          </div>
+        )}
+        
+        {/* Show different action for joined profiles */}
+        {isSharedProfile && !profile?.is_owner && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="w-full flex items-center justify-center space-x-2 py-3 px-4 bg-muted text-muted-foreground rounded-lg text-sm font-medium">
+              <Icon name="CheckCircle" size={16} />
+              <span>Member Access</span>
+            </div>
           </div>
         )}
 

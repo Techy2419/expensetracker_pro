@@ -157,11 +157,11 @@ const JoinProfileScreen = () => {
       }
       
       console.log('✅ Successfully joined profile:', newMember);
-      setSuccess('Successfully joined the profile! Redirecting to dashboard...');
+      setSuccess('Successfully joined the profile! Redirecting to profile selection...');
       
-      // Redirect to dashboard after a short delay
+      // Redirect to profile selection after a short delay so user can see their joined profile
       setTimeout(() => {
-        navigate('/dashboard-screen');
+        navigate('/profile-selection-screen');
       }, 2000);
       
     } catch (error) {
