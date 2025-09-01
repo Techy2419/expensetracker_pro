@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Icon from '../../../components/AppIcon';
+import AppLogo from '../../../components/AppLogo';
 import { useAuth } from '../../../contexts/AuthContext';
 
 const ProfileHeader = ({ onLogout = () => {}, className = "" }) => {
@@ -36,12 +37,7 @@ const ProfileHeader = ({ onLogout = () => {}, className = "" }) => {
       <div className="flex items-center justify-between h-16 px-4 lg:px-6">
         {/* Logo Section */}
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-            <Icon name="DollarSign" size={20} color="white" strokeWidth={2.5} />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">FinTrackr</h1>
-          </div>
+          <AppLogo size={32} variant="default" />
         </div>
         {/* User Menu */}
         <div className="relative" ref={menuRef}>

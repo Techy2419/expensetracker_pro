@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Icon from '../AppIcon';
+import AppLogo from '../AppLogo';
 import ProfileSwitcher from './ProfileSwitcher';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -55,14 +56,7 @@ const NavigationHeader = ({
       <div className="flex items-center justify-between h-16 px-4 lg:px-6">
         {/* Logo Section */}
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-accent rounded-lg flex items-center justify-center">
-              <Icon name="DollarSign" size={20} color="white" strokeWidth={2.5} />
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-semibold text-foreground">FinTrackr</h1>
-            </div>
-          </div>
+          <AppLogo size={36} variant="default" className="cursor-pointer" />
         </div>
         {/* Search Section - Desktop */}
         <div className="hidden md:flex items-center flex-1 max-w-md mx-8">

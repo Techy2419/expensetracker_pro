@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import Icon from '../../../components/AppIcon';
+import AppLogo from '../../../components/AppLogo';
 import Button from '../../../components/ui/Button';
 import Input from '../../../components/ui/Input';
 
@@ -103,11 +104,8 @@ const AuthenticationCard = () => {
   return (
     <div className="w-full max-w-md mx-auto bg-card rounded-2xl shadow-modal p-8 border border-border">
       {/* App Logo */}
-      <div className="flex items-center gap-2 mb-6">
-        <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-          <Icon name="DollarSign" size={32} color="white" strokeWidth={2.5} />
-        </div>
-        <h1 className="text-2xl font-semibold text-foreground mb-2">FinTrackr</h1>
+      <div className="flex justify-center mb-6">
+        <AppLogo size={48} variant="default" />
       </div>
       {/* Welcome Message */}
       <div className="text-center mb-8">
