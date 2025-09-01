@@ -55,16 +55,44 @@ const ExpenseEntryScreen = () => {
   // Fetch profiles from Supabase
   useEffect(() => {
     const fetchProfiles = async () => {
-      // Get current user
-      const { data: user, error: userError } = await authService.getCurrentUser();
-      if (userError || !user) return;
-      // Get profiles
-      const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user.id);
-      setProfiles(fetchedProfiles || []);
-      setCurrentProfile(fetchedProfiles?.[0] || null);
+      try {
+        // Get current user
+        const { data: user, error: userError } = await authService.getCurrentUser();
+        if (userError || !user) return;
+        
+        // Get profiles
+        const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user.id);
+        setProfiles(fetchedProfiles || []);
+        
+        // IMPORTANT: Get the selected profile from localStorage instead of defaulting to first
+        const savedProfile = localStorage.getItem('current_profile');
+        let selectedProfile = null;
+        
+        if (savedProfile) {
+          try {
+            const parsedProfile = JSON.parse(savedProfile);
+            // Find the profile in the fetched profiles to ensure it exists and has latest data
+            selectedProfile = fetchedProfiles?.find(p => p.id === parsedProfile.id);
+          } catch (error) {
+            console.warn('Failed to parse saved profile from localStorage:', error);
+          }
+        }
+        
+        // If no saved profile or saved profile not found, use first profile as fallback
+        if (!selectedProfile && fetchedProfiles?.length > 0) {
+          selectedProfile = fetchedProfiles[0];
+        }
+        
+        setCurrentProfile(selectedProfile);
+      } catch (error) {
+        console.error('Error fetching profiles in expense entry:', error);
+      }
     };
-    fetchProfiles();
-  }, []);
+    
+    if (user && !authLoading) {
+      fetchProfiles();
+    }
+  }, [user, authLoading]);
 
   // Fetch payment methods from Supabase or your backend (add this to your data fetching logic)
   useEffect(() => {
@@ -313,13 +341,35 @@ const ExpenseEntryScreen = () => {
     }
   }, [user, authLoading, navigate]);
 
+  // Handle profile change from navigation header
+  const handleProfileChange = async (newProfile) => {
+    console.log('🔄 Profile changed in expense entry to:', newProfile.name, newProfile.id);
+    
+    // Update current profile
+    setCurrentProfile(newProfile);
+    
+    // Save to localStorage
+    localStorage.setItem('current_profile', JSON.stringify(newProfile));
+    
+    // Refresh payment methods for new profile
+    if (newProfile) {
+      try {
+        // You can add logic here to fetch profile-specific payment methods
+        // For now, we'll just update the state
+        setPaymentMethods([]);
+      } catch (error) {
+        console.error('Error updating payment methods for new profile:', error);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation Header */}
       <NavigationHeader
         currentProfile={currentProfile}
         profiles={profiles}
-        onProfileChange={setCurrentProfile}
+        onProfileChange={handleProfileChange}
         onSearch={(query) => console.log('Search:', query)}
         onUserMenuClick={() => console.log('User menu clicked')}
       />

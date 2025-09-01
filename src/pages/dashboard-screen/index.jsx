@@ -61,31 +61,67 @@ const DashboardScreen = () => {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      // Get current user
-      const { data: user, error: userError } = await authService.getCurrentUser();
-      if (userError || !user) {
+      try {
+        // Get current user
+        const { data: user, error: userError } = await authService.getCurrentUser();
+        if (userError || !user) {
+          setIsLoading(false);
+          return;
+        }
+        
+        // Get profiles
+        const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user.id);
+        setProfiles(fetchedProfiles || []);
+        
+        // IMPORTANT: Get the selected profile from localStorage instead of defaulting to first
+        const savedProfile = localStorage.getItem('current_profile');
+        let selectedProfile = null;
+        
+        if (savedProfile) {
+          try {
+            const parsedProfile = JSON.parse(savedProfile);
+            // Find the profile in the fetched profiles to ensure it exists and has latest data
+            selectedProfile = fetchedProfiles?.find(p => p.id === parsedProfile.id);
+          } catch (error) {
+            console.warn('Failed to parse saved profile from localStorage:', error);
+          }
+        }
+        
+        // If no saved profile or saved profile not found, use first profile as fallback
+        if (!selectedProfile && fetchedProfiles?.length > 0) {
+          selectedProfile = fetchedProfiles[0];
+          // Save this as current profile
+          localStorage.setItem('current_profile', JSON.stringify(selectedProfile));
+        }
+        
+        setCurrentProfile(selectedProfile);
+        
+        // Get transactions for selected profile
+        if (selectedProfile) {
+          const { data: fetchedTransactions } = await expenseService.getExpenses(selectedProfile.id);
+          setTransactions(fetchedTransactions || []);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        showError('Failed to load dashboard data');
+      } finally {
         setIsLoading(false);
-        return;
       }
-      // Get profiles
-      const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user.id);
-      setProfiles(fetchedProfiles || []);
-      setCurrentProfile(fetchedProfiles?.[0] || null);
-      // Get transactions for first profile
-      if (fetchedProfiles?.[0]) {
-        const { data: fetchedTransactions } = await expenseService.getExpenses(fetchedProfiles[0].id);
-        setTransactions(fetchedTransactions || []);
-      }
-      setIsLoading(false);
     };
-    fetchData();
-  }, []);
+    
+    if (user && !authLoading) {
+      fetchData();
+    }
+  }, [user, authLoading, showError]);
 
-  // Real-time subscription effect
+  // Real-time subscription effect - FIXED: Now properly handles profile changes
   useEffect(() => {
     if (!currentProfile?.id) return;
 
     console.log('🔔 Setting up real-time subscription for profile:', currentProfile.id);
+
+    // Test real-time connection first
+    realTimeService.testConnection();
 
     // Subscribe to real-time updates for the current profile
     const subscription = realTimeService.subscribeToProfileExpenses(currentProfile.id, async (payload) => {
@@ -98,16 +134,51 @@ const DashboardScreen = () => {
           console.log('➕ New expense added, refreshing transactions...');
           const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
           setTransactions(fetchedTransactions || []);
+          
+          // Also refresh profile data to update balance/monthly_spent
+          const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user?.id);
+          if (fetchedProfiles) {
+            setProfiles(fetchedProfiles);
+            // Update current profile with latest data
+            const updatedProfile = fetchedProfiles.find(p => p.id === currentProfile.id);
+            if (updatedProfile) {
+              setCurrentProfile(updatedProfile);
+              // Update localStorage with latest profile data
+              localStorage.setItem('current_profile', JSON.stringify(updatedProfile));
+            }
+          }
         } else if (payload.eventType === 'UPDATE') {
           // Expense updated
           console.log('✏️ Expense updated, refreshing transactions...');
           const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
           setTransactions(fetchedTransactions || []);
+          
+          // Refresh profile data
+          const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user?.id);
+          if (fetchedProfiles) {
+            setProfiles(fetchedProfiles);
+            const updatedProfile = fetchedProfiles.find(p => p.id === currentProfile.id);
+            if (updatedProfile) {
+              setCurrentProfile(updatedProfile);
+              localStorage.setItem('current_profile', JSON.stringify(updatedProfile));
+            }
+          }
         } else if (payload.eventType === 'DELETE') {
           // Expense deleted
           console.log('🗑️ Expense deleted, refreshing transactions...');
           const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
           setTransactions(fetchedTransactions || []);
+          
+          // Refresh profile data
+          const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user?.id);
+          if (fetchedProfiles) {
+            setProfiles(fetchedProfiles);
+            const updatedProfile = fetchedProfiles.find(p => p.id === currentProfile.id);
+            if (updatedProfile) {
+              setCurrentProfile(updatedProfile);
+              localStorage.setItem('current_profile', JSON.stringify(updatedProfile));
+            }
+          }
         }
       } else if (payload.table === 'expense_profiles') {
         // Profile updated (balance, monthly_spent, etc.)
@@ -120,12 +191,23 @@ const DashboardScreen = () => {
           const updatedProfile = fetchedProfiles.find(p => p.id === currentProfile.id);
           if (updatedProfile) {
             setCurrentProfile(updatedProfile);
+            localStorage.setItem('current_profile', JSON.stringify(updatedProfile));
           }
         }
       } else if (payload.table === 'budgets') {
         // Budget updated
         console.log('💰 Budget updated, refreshing data...');
         // You can add budget refresh logic here if needed
+      } else if (payload.table === 'profile_members') {
+        // Profile member updated (someone joined/left)
+        console.log('👥 Profile member updated, refreshing profile data...');
+        const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user?.id);
+        setProfiles(fetchedProfiles || []);
+      } else if (payload.table === 'profile_invitations') {
+        // Profile invitation updated
+        console.log('📧 Profile invitation updated, refreshing profile data...');
+        const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user?.id);
+        setProfiles(fetchedProfiles || []);
       }
     });
 
@@ -144,14 +226,27 @@ const DashboardScreen = () => {
     };
   }, []);
 
-  // Handle profile change
+  // Handle profile change - FIXED: Now properly saves to localStorage and updates state
   const handleProfileChange = async (profile) => {
+    console.log('🔄 Profile changed to:', profile.name, profile.id);
+    
+    // Save to localStorage immediately
+    localStorage.setItem('current_profile', JSON.stringify(profile));
+    
+    // Update state
     setCurrentProfile(profile);
     setIsLoading(true);
-    // Fetch transactions for selected profile
-    const { data: fetchedTransactions } = await expenseService.getExpenses(profile.id);
-    setTransactions(fetchedTransactions || []);
-    setIsLoading(false);
+    
+    try {
+      // Fetch transactions for selected profile
+      const { data: fetchedTransactions } = await expenseService.getExpenses(profile.id);
+      setTransactions(fetchedTransactions || []);
+    } catch (error) {
+      console.error('Error fetching transactions for new profile:', error);
+      showError('Failed to load profile data');
+    } finally {
+      setIsLoading(false);
+    }
     
     // The real-time subscription will automatically update when currentProfile changes
     // due to the useEffect dependency on currentProfile?.id
@@ -369,6 +464,46 @@ const DashboardScreen = () => {
 
       {/* Main Content */}
       <main className="pt-20 md:pt-36 pb-20 md:pb-6 px-4 lg:px-6">
+        {/* Debug Section - Only show in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h3 className="text-sm font-semibold text-yellow-800 mb-2">🔍 Debug Info (Development Only)</h3>
+            <div className="text-xs text-yellow-700 space-y-1">
+              <div><strong>Current Profile:</strong> {currentProfile?.name} (ID: {currentProfile?.id})</div>
+              <div><strong>Profile Type:</strong> {currentProfile?.type}</div>
+              <div><strong>Is Shared:</strong> {currentProfile?.is_shared ? 'Yes' : 'No'}</div>
+              <div><strong>Share Code:</strong> {currentProfile?.share_code || 'None'}</div>
+              <div><strong>Total Profiles:</strong> {profiles.length}</div>
+              <div><strong>Total Transactions:</strong> {transactions.length}</div>
+              <div><strong>LocalStorage Profile:</strong> {localStorage.getItem('current_profile') ? 'Set' : 'Not Set'}</div>
+            </div>
+            <div className="mt-3 flex space-x-2">
+              <button
+                onClick={() => {
+                  console.log('🧪 Testing real-time connection...');
+                  realTimeService.testConnection();
+                }}
+                className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+              >
+                Test Real-time
+              </button>
+              <button
+                onClick={async () => {
+                  console.log('🔄 Manual refresh...');
+                  if (currentProfile) {
+                    const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
+                    setTransactions(fetchedTransactions || []);
+                    console.log('✅ Manual refresh completed');
+                  }
+                }}
+                className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+              >
+                Manual Refresh
+              </button>
+            </div>
+          </div>
+        )}
+        
         {/* Live Update Notifications */}
         {notifications.map(notification => (
           <LiveUpdateNotification

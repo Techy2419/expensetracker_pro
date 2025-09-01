@@ -54,12 +54,42 @@ export const realTimeService = {
           callback(payload);
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profile_members',
+          filter: `profile_id=eq.${profileId}`
+        },
+        (payload) => {
+          console.log('📡 Real-time profile member update received:', payload);
+          callback(payload);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'profile_invitations',
+          filter: `profile_id=eq.${profileId}`
+        },
+        (payload) => {
+          console.log('📡 Real-time profile invitation update received:', payload);
+          callback(payload);
+        }
+      )
       .subscribe((status) => {
-        console.log('🔔 Subscription status:', status);
+        console.log('🔔 Subscription status for profile', profileId, ':', status);
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Successfully subscribed to real-time updates');
+          console.log('✅ Successfully subscribed to real-time updates for profile:', profileId);
         } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Real-time subscription error');
+          console.error('❌ Real-time subscription error for profile:', profileId);
+        } else if (status === 'TIMED_OUT') {
+          console.warn('⏰ Real-time subscription timed out for profile:', profileId);
+        } else if (status === 'CLOSED') {
+          console.log('🔒 Real-time subscription closed for profile:', profileId);
         }
       });
 
@@ -83,6 +113,7 @@ export const realTimeService = {
   unsubscribeFromAll() {
     console.log('🔕 Unsubscribing from all real-time updates');
     this.subscriptions.forEach((subscription, profileId) => {
+      console.log('🔕 Unsubscribing from profile:', profileId);
       subscription.unsubscribe();
     });
     this.subscriptions.clear();
@@ -115,7 +146,7 @@ export const realTimeService = {
         }
       )
       .subscribe((status) => {
-        console.log('🔔 Member subscription status:', status);
+        console.log('🔔 Member subscription status for profile', profileId, ':', status);
       });
 
     // Store the subscription
@@ -133,5 +164,26 @@ export const realTimeService = {
       subscription.unsubscribe();
       this.subscriptions.delete(channelName);
     }
+  },
+
+  // Test real-time connection
+  testConnection() {
+    console.log('🧪 Testing real-time connection...');
+    
+    const testChannel = supabase
+      .channel('test-connection')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => {})
+      .subscribe((status) => {
+        console.log('🧪 Test connection status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Real-time connection test successful');
+          // Clean up test channel
+          testChannel.unsubscribe();
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Real-time connection test failed');
+        }
+      });
+    
+    return testChannel;
   }
 };

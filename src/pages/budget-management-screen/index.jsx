@@ -47,25 +47,55 @@ const BudgetManagementScreen = () => {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      // Get current user
-      const { data: user, error: userError } = await authService.getCurrentUser();
-      if (userError || !user) {
+      try {
+        // Get current user
+        const { data: user, error: userError } = await authService.getCurrentUser();
+        if (userError || !user) {
+          setIsLoading(false);
+          return;
+        }
+        
+        // Get profiles
+        const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user.id);
+        setProfiles(fetchedProfiles || []);
+        
+        // IMPORTANT: Get the selected profile from localStorage instead of defaulting to first
+        const savedProfile = localStorage.getItem('current_profile');
+        let selectedProfile = null;
+        
+        if (savedProfile) {
+          try {
+            const parsedProfile = JSON.parse(savedProfile);
+            // Find the profile in the fetched profiles to ensure it exists and has latest data
+            selectedProfile = fetchedProfiles?.find(p => p.id === parsedProfile.id);
+          } catch (error) {
+            console.warn('Failed to parse saved profile from localStorage:', error);
+          }
+        }
+        
+        // If no saved profile or saved profile not found, use first profile as fallback
+        if (!selectedProfile && fetchedProfiles?.length > 0) {
+          selectedProfile = fetchedProfiles[0];
+        }
+        
+        setCurrentProfile(selectedProfile);
+        
+        // Get budgets for selected profile
+        if (selectedProfile) {
+          const { data: fetchedBudgets } = await expenseService.getBudgets(selectedProfile.id);
+          setBudgets(fetchedBudgets || []);
+        }
+      } catch (error) {
+        console.error('Error fetching data in budget management:', error);
+      } finally {
         setIsLoading(false);
-        return;
       }
-      // Get profiles
-      const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user.id);
-      setProfiles(fetchedProfiles || []);
-      setCurrentProfile(fetchedProfiles?.[0] || null);
-      // Get budgets for first profile
-      if (fetchedProfiles?.[0]) {
-        const { data: fetchedBudgets } = await expenseService.getBudgets(fetchedProfiles[0].id);
-        setBudgets(fetchedBudgets || []);
-      }
-      setIsLoading(false);
     };
-    fetchData();
-  }, []);
+    
+    if (user && !authLoading) {
+      fetchData();
+    }
+  }, [user, authLoading]);
 
   // Real-time subscription effect
   useEffect(() => {
@@ -119,14 +149,25 @@ const BudgetManagementScreen = () => {
     };
   }, []);
 
-  // Handle profile change
-  const handleProfileChange = async (profile) => {
-    setCurrentProfile(profile);
-    setIsLoading(true);
-    // Fetch budgets for selected profile
-    const { data: fetchedBudgets } = await expenseService.getBudgets(profile.id);
-    setBudgets(fetchedBudgets || []);
-    setIsLoading(false);
+  // Handle profile change from navigation header
+  const handleProfileChange = async (newProfile) => {
+    console.log('🔄 Profile changed in budget management to:', newProfile.name, newProfile.id);
+    
+    // Update current profile
+    setCurrentProfile(newProfile);
+    
+    // Save to localStorage
+    localStorage.setItem('current_profile', JSON.stringify(newProfile));
+    
+    // Refresh budgets for new profile
+    if (newProfile) {
+      try {
+        const { data: fetchedBudgets } = await expenseService.getBudgets(newProfile.id);
+        setBudgets(fetchedBudgets || []);
+      } catch (error) {
+        console.error('Error fetching budgets for new profile:', error);
+      }
+    }
   };
 
   const handleSearch = (query) => {

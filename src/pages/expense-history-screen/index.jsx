@@ -45,25 +45,55 @@ const ExpenseHistoryScreen = () => {
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
-      // Get current user
-      const { data: user, error: userError } = await authService.getCurrentUser();
-      if (userError || !user) {
+      try {
+        // Get current user
+        const { data: user, error: userError } = await authService.getCurrentUser();
+        if (userError || !user) {
+          setIsLoading(false);
+          return;
+        }
+        
+        // Get profiles
+        const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user.id);
+        setProfiles(fetchedProfiles || []);
+        
+        // IMPORTANT: Get the selected profile from localStorage instead of defaulting to first
+        const savedProfile = localStorage.getItem('current_profile');
+        let selectedProfile = null;
+        
+        if (savedProfile) {
+          try {
+            const parsedProfile = JSON.parse(savedProfile);
+            // Find the profile in the fetched profiles to ensure it exists and has latest data
+            selectedProfile = fetchedProfiles?.find(p => p.id === parsedProfile.id);
+          } catch (error) {
+            console.warn('Failed to parse saved profile from localStorage:', error);
+          }
+        }
+        
+        // If no saved profile or saved profile not found, use first profile as fallback
+        if (!selectedProfile && fetchedProfiles?.length > 0) {
+          selectedProfile = fetchedProfiles[0];
+        }
+        
+        setCurrentProfile(selectedProfile);
+        
+        // Get transactions for selected profile
+        if (selectedProfile) {
+          const { data: fetchedTransactions } = await expenseService.getExpenses(selectedProfile.id);
+          setTransactions(fetchedTransactions || []);
+        }
+      } catch (error) {
+        console.error('Error fetching data in expense history:', error);
+      } finally {
         setIsLoading(false);
-        return;
       }
-      // Get profiles
-      const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user.id);
-      setProfiles(fetchedProfiles || []);
-      setCurrentProfile(fetchedProfiles?.[0] || null);
-      // Get transactions for first profile
-      if (fetchedProfiles?.[0]) {
-        const { data: fetchedTransactions } = await expenseService.getExpenses(fetchedProfiles[0].id);
-        setTransactions(fetchedTransactions || []);
-      }
-      setIsLoading(false);
     };
-    fetchData();
-  }, []);
+    
+    if (user && !authLoading) {
+      fetchData();
+    }
+  }, [user, authLoading]);
 
   // Real-time subscription effect
   useEffect(() => {
@@ -111,14 +141,25 @@ const ExpenseHistoryScreen = () => {
     };
   }, []);
 
-  // Handle profile change
-  const handleProfileChange = async (profile) => {
-    setCurrentProfile(profile);
-    setIsLoading(true);
-    // Fetch transactions for selected profile
-    const { data: fetchedTransactions } = await expenseService.getExpenses(profile.id);
-    setTransactions(fetchedTransactions || []);
-    setIsLoading(false);
+  // Handle profile change from navigation header
+  const handleProfileChange = async (newProfile) => {
+    console.log('🔄 Profile changed in expense history to:', newProfile.name, newProfile.id);
+    
+    // Update current profile
+    setCurrentProfile(newProfile);
+    
+    // Save to localStorage
+    localStorage.setItem('current_profile', JSON.stringify(newProfile));
+    
+    // Refresh transactions for new profile
+    if (newProfile) {
+      try {
+        const { data: fetchedTransactions } = await expenseService.getExpenses(newProfile.id);
+        setTransactions(fetchedTransactions || []);
+      } catch (error) {
+        console.error('Error fetching transactions for new profile:', error);
+      }
+    }
   };
 
   // Filter transactions based on current filters
