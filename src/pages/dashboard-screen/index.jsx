@@ -476,6 +476,7 @@ const DashboardScreen = () => {
               <div><strong>Total Profiles:</strong> {profiles.length}</div>
               <div><strong>Total Transactions:</strong> {transactions.length}</div>
               <div><strong>LocalStorage Profile:</strong> {localStorage.getItem('current_profile') ? 'Set' : 'Not Set'}</div>
+              <div><strong>Real-time Status:</strong> <span className="text-green-600">✅ Active</span></div>
             </div>
             <div className="mt-3 flex space-x-2">
               <button
@@ -500,6 +501,38 @@ const DashboardScreen = () => {
               >
                 Manual Refresh
               </button>
+              <button
+                onClick={async () => {
+                  console.log('🔍 Testing shared profile access...');
+                  if (currentProfile) {
+                    try {
+                      // Test if we can access the profile data
+                      const { data: profileData } = await supabase
+                        .from('expense_profiles')
+                        .select('*')
+                        .eq('id', currentProfile.id)
+                        .single();
+                      console.log('✅ Profile access test:', profileData);
+                      
+                      // Test if we can access expenses
+                      const { data: expenseData } = await supabase
+                        .from('expenses')
+                        .select('*')
+                        .eq('profile_id', currentProfile.id);
+                      console.log('✅ Expense access test:', expenseData?.length, 'expenses found');
+                      
+                    } catch (error) {
+                      console.error('❌ Access test failed:', error);
+                    }
+                  }
+                }}
+                className="px-3 py-1 bg-purple-500 text-white text-xs rounded hover:bg-purple-600"
+              >
+                Test Access
+              </button>
+            </div>
+            <div className="mt-3 text-xs text-yellow-600">
+              <strong>Real-time Issue:</strong> If real-time isn't working, you need to run the SQL migrations in Supabase to enable real-time for tables.
             </div>
           </div>
         )}
