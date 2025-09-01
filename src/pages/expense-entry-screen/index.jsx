@@ -25,7 +25,7 @@ import { realTimeService } from '../../services/realTimeService';
 const ExpenseEntryScreen = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { error: showError } = useToast();
+  const { error: showError, info: showInfo } = useToast();
   
   // Form state
   const [formData, setFormData] = useState({
