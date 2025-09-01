@@ -20,6 +20,7 @@ import ExpenseFormActions from './components/ExpenseFormActions';
 import { expenseService } from '../../services/expenseService';
 import { authService } from '../../services/authService';
 import { supabase } from '../../lib/supabase';
+import { realTimeService } from '../../services/realTimeService';
 
 const ExpenseEntryScreen = () => {
   const navigate = useNavigate();
@@ -93,6 +94,44 @@ const ExpenseEntryScreen = () => {
       fetchProfiles();
     }
   }, [user, authLoading]);
+
+  // Real-time subscription for expense updates
+  useEffect(() => {
+    if (!currentProfile?.id || !user?.id) return;
+
+    console.log('🔔 Setting up real-time subscription for expense entry screen, profile:', currentProfile.id);
+
+    const subscription = realTimeService.subscribeToProfileExpenses(currentProfile.id, async (payload) => {
+      console.log('📡 Real-time update received in expense entry screen:', payload);
+      
+      // Only show notifications for changes made by other users
+      if (payload.new && payload.new.user_id !== user?.id) {
+        if (payload.table === 'expenses') {
+          if (payload.eventType === 'INSERT') {
+            showInfo(`💰 New expense added: $${payload.new.amount} for ${payload.new.category}`);
+          } else if (payload.eventType === 'UPDATE') {
+            showInfo(`✏️ Expense updated: $${payload.new.amount} for ${payload.new.category}`);
+          } else if (payload.eventType === 'DELETE') {
+            showInfo(`🗑️ Expense removed: $${payload.old.amount} for ${payload.old.category}`);
+          }
+        } else if (payload.table === 'expense_profiles') {
+          showInfo(`📊 Profile updated: Balance changed to $${payload.new.balance}`);
+        } else if (payload.table === 'budgets') {
+          if (payload.eventType === 'INSERT') {
+            showInfo(`💰 New budget set: $${payload.new.amount} for ${payload.new.category}`);
+          } else if (payload.eventType === 'UPDATE') {
+            showInfo(`💰 Budget updated: $${payload.new.amount} for ${payload.new.category}`);
+          }
+        }
+      }
+    });
+
+    // Cleanup subscription when component unmounts or profile changes
+    return () => {
+      console.log('🔕 Cleaning up real-time subscription in expense entry screen for profile:', currentProfile.id);
+      realTimeService.unsubscribeFromProfileExpenses(currentProfile.id);
+    };
+  }, [currentProfile?.id, user?.id, showInfo]);
 
   // Fetch payment methods from Supabase or your backend (add this to your data fetching logic)
   useEffect(() => {

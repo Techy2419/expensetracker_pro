@@ -110,18 +110,48 @@ const ExpenseHistoryScreen = () => {
         if (payload.eventType === 'INSERT') {
           // New expense added
           console.log('➕ New expense added, refreshing transactions...');
+          
+          // Show toast notification for new expenses
+          if (payload.new && payload.new.user_id !== user?.id) {
+            showInfo(`💰 New expense added: $${payload.new.amount} for ${payload.new.category}`);
+          }
+          
           const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
           setTransactions(fetchedTransactions || []);
         } else if (payload.eventType === 'UPDATE') {
           // Expense updated
           console.log('✏️ Expense updated, refreshing transactions...');
+          
+          // Show toast notification for expense updates
+          if (payload.new && payload.new.user_id !== user?.id) {
+            showInfo(`✏️ Expense updated: $${payload.new.amount} for ${payload.new.category}`);
+          }
+          
           const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
           setTransactions(fetchedTransactions || []);
         } else if (payload.eventType === 'DELETE') {
           // Expense deleted
           console.log('🗑️ Expense deleted, refreshing transactions...');
+          
+          // Show toast notification for expense deletions
+          if (payload.old && payload.old.user_id !== user?.id) {
+            showInfo(`🗑️ Expense removed: $${payload.old.amount} for ${payload.old.category}`);
+          }
+          
           const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
           setTransactions(fetchedTransactions || []);
+        }
+      } else if (payload.table === 'expense_profiles') {
+        // Profile updated (balance, monthly_spent, etc.)
+        if (payload.eventType === 'UPDATE' && payload.new && payload.new.user_id !== user?.id) {
+          showInfo(`📊 Profile updated: Balance changed to $${payload.new.balance}`);
+        }
+      } else if (payload.table === 'budgets') {
+        // Budget updated
+        if (payload.eventType === 'INSERT' && payload.new && payload.new.user_id !== user?.id) {
+          showInfo(`💰 New budget set: $${payload.new.amount} for ${payload.new.category}`);
+        } else if (payload.eventType === 'UPDATE' && payload.new && payload.new.user_id !== user?.id) {
+          showInfo(`💰 Budget updated: $${payload.new.amount} for ${payload.new.category}`);
         }
       }
     });

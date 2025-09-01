@@ -132,6 +132,13 @@ const DashboardScreen = () => {
         if (payload.eventType === 'INSERT') {
           // New expense added
           console.log('➕ New expense added, refreshing transactions...');
+          
+          // Show toast notification for new expenses
+          const expenseData = payload.new;
+          if (expenseData && expenseData.user_id !== user?.id) {
+            showInfo(`💰 New expense added: $${expenseData.amount} for ${expenseData.category}`);
+          }
+          
           const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
           setTransactions(fetchedTransactions || []);
           
@@ -150,6 +157,13 @@ const DashboardScreen = () => {
         } else if (payload.eventType === 'UPDATE') {
           // Expense updated
           console.log('✏️ Expense updated, refreshing transactions...');
+          
+          // Show toast notification for expense updates
+          const expenseData = payload.new;
+          if (expenseData && expenseData.user_id !== user?.id) {
+            showInfo(`✏️ Expense updated: $${expenseData.amount} for ${expenseData.category}`);
+          }
+          
           const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
           setTransactions(fetchedTransactions || []);
           
@@ -166,6 +180,13 @@ const DashboardScreen = () => {
         } else if (payload.eventType === 'DELETE') {
           // Expense deleted
           console.log('🗑️ Expense deleted, refreshing transactions...');
+          
+          // Show toast notification for expense deletions
+          const expenseData = payload.old;
+          if (expenseData && expenseData.user_id !== user?.id) {
+            showInfo(`🗑️ Expense removed: $${expenseData.amount} for ${expenseData.category}`);
+          }
+          
           const { data: fetchedTransactions } = await expenseService.getExpenses(currentProfile.id);
           setTransactions(fetchedTransactions || []);
           
@@ -183,6 +204,15 @@ const DashboardScreen = () => {
       } else if (payload.table === 'expense_profiles') {
         // Profile updated (balance, monthly_spent, etc.)
         console.log('📊 Profile updated, refreshing profile data...');
+        
+        // Show toast notification for profile updates
+        if (payload.eventType === 'UPDATE' && payload.new) {
+          const profileData = payload.new;
+          if (profileData.user_id !== user?.id) {
+            showInfo(`📊 Profile updated: Balance changed to $${profileData.balance}`);
+          }
+        }
+        
         const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user?.id);
         setProfiles(fetchedProfiles || []);
         
@@ -197,15 +227,45 @@ const DashboardScreen = () => {
       } else if (payload.table === 'budgets') {
         // Budget updated
         console.log('💰 Budget updated, refreshing data...');
+        
+        // Show toast notification for budget updates
+        if (payload.eventType === 'INSERT' && payload.new) {
+          const budgetData = payload.new;
+          if (budgetData.user_id !== user?.id) {
+            showInfo(`💰 New budget set: $${budgetData.amount} for ${budgetData.category}`);
+          }
+        } else if (payload.eventType === 'UPDATE' && payload.new) {
+          const budgetData = payload.new;
+          if (budgetData.user_id !== user?.id) {
+            showInfo(`💰 Budget updated: $${budgetData.amount} for ${budgetData.category}`);
+          }
+        }
+        
         // You can add budget refresh logic here if needed
       } else if (payload.table === 'profile_members') {
         // Profile member updated (someone joined/left)
         console.log('👥 Profile member updated, refreshing profile data...');
+        
+        // Show toast notification for member changes
+        if (payload.eventType === 'INSERT' && payload.new) {
+          showInfo(`👥 New member joined the profile`);
+        } else if (payload.eventType === 'DELETE' && payload.old) {
+          showInfo(`👥 Member left the profile`);
+        }
+        
         const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user?.id);
         setProfiles(fetchedProfiles || []);
       } else if (payload.table === 'profile_invitations') {
         // Profile invitation updated
         console.log('📧 Profile invitation updated, refreshing profile data...');
+        
+        // Show toast notification for invitation changes
+        if (payload.eventType === 'INSERT' && payload.new) {
+          showInfo(`📧 New invitation sent`);
+        } else if (payload.eventType === 'UPDATE' && payload.new) {
+          showInfo(`📧 Invitation status updated`);
+        }
+        
         const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user?.id);
         setProfiles(fetchedProfiles || []);
       }

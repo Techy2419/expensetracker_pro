@@ -111,16 +111,42 @@ const BudgetManagementScreen = () => {
       if (payload.table === 'budgets') {
         // Budget updated
         console.log('💰 Budget updated, refreshing budgets...');
+        
+        // Show toast notification for budget updates
+        if (payload.new && payload.new.user_id !== user?.id) {
+          if (payload.eventType === 'INSERT') {
+            showError(`💰 New budget set: $${payload.new.amount} for ${payload.new.category}`);
+          } else if (payload.eventType === 'UPDATE') {
+            showError(`💰 Budget updated: $${payload.new.amount} for ${payload.new.category}`);
+          }
+        }
+        
         const { data: fetchedBudgets } = await expenseService.getBudgets(currentProfile.id);
         setBudgets(fetchedBudgets || []);
       } else if (payload.table === 'expenses') {
         // Expense updated - this affects budget calculations
         console.log('💸 Expense updated, refreshing budgets...');
+        
+        // Show toast notification for expense updates
+        if (payload.new && payload.new.user_id !== user?.id) {
+          if (payload.eventType === 'INSERT') {
+            showError(`💰 New expense added: $${payload.new.amount} for ${payload.new.category}`);
+          } else if (payload.eventType === 'UPDATE') {
+            showError(`✏️ Expense updated: $${payload.new.amount} for ${payload.new.category}`);
+          }
+        }
+        
         const { data: fetchedBudgets } = await expenseService.getBudgets(currentProfile.id);
         setBudgets(fetchedBudgets || []);
       } else if (payload.table === 'expense_profiles') {
         // Profile updated (balance, monthly_spent, etc.)
         console.log('📊 Profile updated, refreshing profile data...');
+        
+        // Show toast notification for profile updates
+        if (payload.eventType === 'UPDATE' && payload.new && payload.new.user_id !== user?.id) {
+          showError(`📊 Profile updated: Balance changed to $${payload.new.balance}`);
+        }
+        
         const { data: fetchedProfiles } = await expenseService.getExpenseProfiles(user?.id);
         setProfiles(fetchedProfiles || []);
         

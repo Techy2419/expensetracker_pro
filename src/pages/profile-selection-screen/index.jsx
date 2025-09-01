@@ -52,8 +52,8 @@ const ProfileSelectionScreen = () => {
     
     setLoading(true);
     try {
-      // TODO: Re-enable after fixing RLS policies
-      // await expenseService?.ensureShareCodes();
+      // Ensure all shared profiles have share codes
+      await expenseService?.ensureShareCodes();
       
       const { data, error } = await expenseService?.getExpenseProfiles(user?.id);
       
