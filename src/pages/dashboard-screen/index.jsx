@@ -105,7 +105,7 @@ const DashboardScreen = () => {
         console.error('Error fetching dashboard data:', error);
         showError('Failed to load dashboard data');
       } finally {
-        setIsLoading(false);
+      setIsLoading(false);
       }
     };
     
