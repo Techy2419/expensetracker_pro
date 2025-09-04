@@ -15,7 +15,7 @@ const AppLogo = ({
       <div className="relative">
         <img 
           src="/logo.svg" 
-          alt="FinTrackr Logo" 
+          alt="MoneySync Logo" 
           width={logoWidth} 
           height={logoHeight}
           className="object-contain"

@@ -1,6 +1,6 @@
 {
-  "short_name": "FinTrackr",
-  "name": "FinTrackr - Smart Finance Tracking",
+  "short_name": "MoneySync",
+  "name": "MoneySync - Smart Finance Tracking",
   "icons": [
     {
       "src": "apple-touch-icon-180x180.png",
@@ -43,5 +43,5 @@
   "display": "standalone",
   "theme_color": "#2563eb",
   "background_color": "#ffffff",
-  "description": "The modern way to track expenses, manage budgets, and share finances with family and friends."
+  "description": "The modern way to track expenses, manage budgets, and share finances with family and friends. MoneySync - Your Smart Financial Companion."
 }
