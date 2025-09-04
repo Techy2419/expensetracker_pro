@@ -89,7 +89,7 @@ serve(async (req)=>{
       }
       
       to = invitedEmail;
-      subject = `You're invited to join ${profileName} on FinTrackr!`;
+      subject = `You're invited to join ${profileName} on MoneySync!`;
       
       // Generate beautiful HTML email
       html = `
@@ -98,7 +98,7 @@ serve(async (req)=>{
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Join ${profileName} on FinTrackr</title>
+          <title>Join ${profileName} on MoneySync</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -113,13 +113,13 @@ serve(async (req)=>{
           <div class="container">
             <div class="header">
               <h1 style="margin: 0; font-size: 28px;">🎉 You're Invited!</h1>
-              <p style="margin: 10px 0 0 0; opacity: 0.9;">Join ${profileName} on FinTrackr</p>
+              <p style="margin: 10px 0 0 0; opacity: 0.9;">Join ${profileName} on MoneySync</p>
             </div>
             
             <div class="content">
               <h2 style="color: #333; margin-top: 0;">Hello!</h2>
               
-              <p><strong>${inviterName}</strong> has invited you to join their expense tracking profile <strong>${profileName}</strong> on FinTrackr.</p>
+              <p><strong>${inviterName}</strong> has invited you to join their expense tracking profile <strong>${profileName}</strong> on MoneySync.</p>
               
               ${message ? `<p><em>"${message}"</em></p>` : ''}
               
@@ -147,7 +147,7 @@ serve(async (req)=>{
               
               <div class="footer">
                 <p>This invitation never expires.</p>
-                <p>FinTrackr - Your Smart Financial Companion</p>
+                <p>MoneySync - Your Smart Financial Companion</p>
               </div>
             </div>
           </div>

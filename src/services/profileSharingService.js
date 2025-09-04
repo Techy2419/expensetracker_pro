@@ -180,7 +180,7 @@ export const profileSharingService = {
         
         if (profileData && userData?.user) {
           // Use the unique invitation code for the link, not the profile share code
-          const inviteLink = `https://fintrackr.vercel.app/join-profile/${invitationData.invitation_code}`;
+          const inviteLink = `https://moneysync.vercel.app/join-profile/${invitationData.invitation_code}`;
           
           const { data: emailResult, error: emailError } = await supabase.functions.invoke('test-email-function', {
             body: {

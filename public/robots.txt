@@ -2,7 +2,7 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://fintrackr.vercel.app/sitemap.xml
+Sitemap: https://moneysync.vercel.app/sitemap.xml
 
 # Crawl-delay
 Crawl-delay: 1
